@@ -32,7 +32,7 @@ export function def( tag: string )
 	}
 }
 
-export function listen<T extends HTMLElement>( element: T )
+export function listen<T extends ( HTMLElement | Document )>( element: T )
 {
 	return {
 		on: <K extends keyof EventExtended>( type: K ) =>
