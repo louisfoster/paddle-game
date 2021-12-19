@@ -1,51 +1,30 @@
-import { bound } from "../helpers"
+import { vectorToCanvasCoords } from "../helpers"
 
-export class Player implements Drawable
+export class PlayerComponent implements Drawable, Player
 {
-	/**
-	 * - position (x: 0 - 1, y: 0 - 1)
-	 * - rotation (0 - 1)
-	 * - draw (receive ctx, coord translate)
-	 * - rotate
-	 * - move forward
-	 */
+	private _rotation: number
 
-	private position: Vector
+	public acceleration: number
 
-	private rotation: number
+	public inCapsule: string
 
-	private acceleration: number
+	public radius: number
 
 	constructor()
 	{
-		this.position = { x: 0.5, y: 0.5 }
-
 		// This aligns current rotation with initial draw form
-		this.rotation = 0.15
-
-		// this.whRatio = 1
+		this._rotation = 0.15
 
 		this.acceleration = 0
+
+		this.inCapsule = ``
+
+		this.radius = 20
 	}
 
-	private update( delta: number, ctx: CanvasRenderingContext2D )
+	get rotation(): number
 	{
-		const distance = this.acceleration > 0 ? this.acceleration * ( delta * 0.00001 ) + 0.0001 : 0
-
-		this.acceleration = this.acceleration > 0 ? this.acceleration - ( delta * 0.005 ) : 0
-
-		if ( distance )
-		{
-			this.position.x =
-				bound( distance
-				* Math.cos( ( this.rotation * 360 ) * Math.PI / 180 )
-				+ this.position.x )
-
-			this.position.y =
-				bound( ( distance * ( ctx.canvas.width / ctx.canvas.height ) ) 
-				* Math.sin(  ( this.rotation * 360 ) * Math.PI / 180 )
-				+ this.position.y )
-		}
+		return this._rotation
 	}
 
 	/**
@@ -54,14 +33,9 @@ export class Player implements Drawable
 	 * @param ctx 
 	 * @param vectorToCanvasCoords 
 	 */
-	public draw( delta: number, ctx: CanvasRenderingContext2D, vectorToCanvasCoords: ( vector: Vector ) => CanvasCoords ): void
+	public draw( ctx: CanvasRenderingContext2D, pos: Vector ): void
 	{
-		this.update( delta, ctx )
-
-
-		const pos = this.position
-
-		const { left, top } = vectorToCanvasCoords( pos )
+		const { left, top } = vectorToCanvasCoords( ctx.canvas, pos )
 
 		ctx.strokeStyle = `#15F`
 
@@ -73,7 +47,7 @@ export class Player implements Drawable
 
 		ctx.beginPath()
 
-		ctx.ellipse( left, top, 20, 20, 0, 0, Math.PI * 2 )
+		ctx.ellipse( left, top, this.radius, this.radius, 0, 0, Math.PI * 2 )
 
 		ctx.stroke()
 
@@ -106,11 +80,14 @@ export class Player implements Drawable
 	 */
 	public setRotation( value: number ): void
 	{
-		this.rotation = value
+		this._rotation = value
 	}
 
 	/**
 	 * propel forward
+	 * 
+	 * TODO: build up energy, further launch
+	 * 
 	 * @returns 
 	 */
 	public moveForward(): void

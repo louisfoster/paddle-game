@@ -96,3 +96,19 @@ export function bound( value: number )
 {
 	return Math.max( 0, Math.min( 1, value ) )
 }
+
+export function vectorToCanvasCoords( canvas: HTMLCanvasElement, vector: Vector ): CanvasCoords
+{
+	return {
+		left: vector.x * canvas.width,
+		top: vector.y * canvas.height
+	}
+}
+
+export function randomPosition(): Vector
+{
+	return {
+		x: Math.random(),
+		y: Math.random()
+	}
+}

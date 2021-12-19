@@ -1,16 +1,17 @@
 import { ComponentBase } from "../componentBase"
 import { define } from "web-component-decorator"
-import { bound, el, listen, using } from "../helpers"
+import { el, listen, using, vectorToCanvasCoords } from "../helpers"
 import { Synth, PolySynth, Loop, Transport } from "tone"
 import { points } from "../points"
-import { Player } from "../Component/player"
+import { PlayerComponent } from "../Component/player"
+import { CapsuleComponent } from "../Component/capsule"
+import { PhysicalSystem } from "../System/physical"
+import { CollisionSystem } from "../System/collision"
 
 
 
 /**
- * - player tap launch forward
- * 	- opt: build up energy, further launch
- * - player bouncing off walls, other chars, occupied capsules
+ * - collision: player bouncing off walls, other chars, occupied capsules
  * - capsule drawing, occupying
  * - varying size notes
  * - reset note count for path on resize
@@ -29,13 +30,39 @@ export class GameCanvas extends ComponentBase
 
 	private ctx?: CanvasRenderingContext2D
 
-	private player: Player
+	private player: PlayerComponent
+
+	private capsule: CapsuleComponent
+
+	private entities: Record<string, Component>
+
+	private physicalSystem: PhysicalSystem
+
+	private collisionSystem: CollisionSystem
 
 	constructor() 
 	{
 		super( `game-canvas` )
 
-		this.player = new Player()
+		this.physicalSystem = new PhysicalSystem()
+
+		this.collisionSystem = new CollisionSystem( this.physicalSystem )
+
+		this.player = new PlayerComponent()
+
+		this.capsule = new CapsuleComponent()
+
+		this.entities = {
+			"0": this.player,
+			"1": this.capsule
+		}
+
+		for( const entity in this.entities )
+		{
+			this.physicalSystem.next( { id: entity, instance: this.entities[ entity ] } )
+
+			this.collisionSystem.next( { id: entity, instance: this.entities[ entity ] } )
+		}
 
 		this.state = {
 			rotation: 0.15,
@@ -53,6 +80,12 @@ export class GameCanvas extends ComponentBase
 
 			switch( key )
 			{
+				case `ArrowUp`:
+					// this.player.moveForward()
+					// this.capsule.moving = true
+
+					break
+
 				case `ArrowLeft`:
 					this.state.rotateDirection = -1
 
@@ -73,6 +106,7 @@ export class GameCanvas extends ComponentBase
 			{
 				case `ArrowUp`:
 					this.player.moveForward()
+					// this.capsule.moving = false
 
 					break
 
@@ -203,9 +237,15 @@ export class GameCanvas extends ComponentBase
 
 		ctx.fillRect( 0, 0, canvas.width, canvas.height )
 
+		this.physicalSystem.update( delta, ctx )
+
+		this.collisionSystem.update( ctx )
+
 		this.drawPoints( ctx )
 
-		this.character( delta, ctx )
+		this.character( ctx )
+
+		this.capsule.draw( ctx, this.physicalSystem.pos( `1` ) )
 
 		this.state.previousTime = time
 
@@ -223,7 +263,7 @@ export class GameCanvas extends ComponentBase
 		canvas.height = height
 	}
 
-	private character( delta: number, ctx: CanvasRenderingContext2D )
+	private character( ctx: CanvasRenderingContext2D )
 	{
 		if ( this.state.rotateDirection !== 0 )
 		{
@@ -232,20 +272,20 @@ export class GameCanvas extends ComponentBase
 			this.player.setRotation( this.state.rotation )
 		}
 
-		this.player.draw( delta, ctx, vector => this.vectorToCanvasCoords( ctx.canvas, vector ) )
+		this.player.draw( ctx, this.physicalSystem.pos( `0` ) )
 	}
 
 	private drawPoints( ctx: CanvasRenderingContext2D )
 	{
 		const path = new Path2D()
 
-		const { left, top } = this.vectorToCanvasCoords( ctx.canvas, points[ 0 ] )
+		const { left, top } = vectorToCanvasCoords( ctx.canvas, points[ 0 ] )
 
 		path.moveTo( left, top )
 
 		for ( const point of points.slice( 1 ) )
 		{
-			const { left, top } = this.vectorToCanvasCoords( ctx.canvas, point )
+			const { left, top } = vectorToCanvasCoords( ctx.canvas, point )
 
 			path.lineTo( left, top )
 		}
@@ -284,9 +324,9 @@ export class GameCanvas extends ComponentBase
 
 		let run = true
 
-		let p0 = this.vectorToCanvasCoords( ctx.canvas, currentPosition )
+		let p0 = vectorToCanvasCoords( ctx.canvas, currentPosition )
 
-		let p1 = this.vectorToCanvasCoords( ctx.canvas, points[ nextPointIndex ] )
+		let p1 = vectorToCanvasCoords( ctx.canvas, points[ nextPointIndex ] )
 
 		let circleIndex = 0
 
@@ -328,7 +368,7 @@ export class GameCanvas extends ComponentBase
 				nextPointIndex += 1
 
 				// move to next point
-				p1 = this.vectorToCanvasCoords( ctx.canvas, points[ nextPointIndex ] )
+				p1 = vectorToCanvasCoords( ctx.canvas, points[ nextPointIndex ] )
 			}
 			
 			// continue along line
@@ -354,22 +394,7 @@ export class GameCanvas extends ComponentBase
 		}
 	}
 
-	private randomPosition(): Vector
-	{
-		return {
-			x: Math.random(),
-			y: Math.random()
-		}
-	}
-
-	private vectorToCanvasCoords( canvas: HTMLCanvasElement, vector: Vector ): CanvasCoords
-	{
-		return {
-			left: vector.x * canvas.width,
-			top: vector.y * canvas.height
-		}
-	}
-
+	
 	connectedCallback(): void 
 	{
 		using( this.shadowRoot )

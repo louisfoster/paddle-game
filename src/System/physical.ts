@@ -1,0 +1,179 @@
+/**
+ * on user forward input
+ * - if player, and player isn't in capsule, and player has acceleration, move player with momentum
+ * - if capsule, and capsule has player, get player rotation, move capsule + player forward
+ * 
+ * on user rotate input
+ * - rotate player
+ */
+
+import { CapsuleComponent } from "../Component/capsule"
+import { PlayerComponent } from "../Component/player"
+import { bound } from "../helpers"
+
+interface ComponentTyped<T>
+{
+	id: string
+	instance: T
+	position: Vector
+}
+
+interface ComponentGeneric
+{
+	id: string
+	instance: Component
+	position: Vector
+}
+
+export class PhysicalSystem implements Observer<ComponentEntity>
+{
+	private components: ComponentGeneric[]
+
+	private idMap: Record<string, number>
+
+	constructor()
+	{
+		this.components = []
+
+		this.idMap = {}
+	}
+
+	/**
+	 * 
+	 * 
+	 * PLAYER
+	 * 
+	 * 
+	 *  
+	 */
+
+	private isPlayer( component: ComponentGeneric ): component is ComponentTyped<PlayerComponent>
+	{
+		return component.instance instanceof PlayerComponent
+	}
+
+	private updatePlayer( delta: number, ctx: CanvasRenderingContext2D, player: ComponentTyped<PlayerComponent> )
+	{
+		const { instance: obj } = player
+
+		if ( obj.inCapsule )
+		{
+			const capsule = this.components[ this.idMap[ obj.inCapsule ] ]
+
+			if ( !this.isCapsule( capsule ) ) return
+
+			player.position.x = capsule.position.x
+
+			player.position.y = capsule.position.y
+		}
+		else
+		{
+			const distance = obj.acceleration > 0
+				? obj.acceleration * ( delta * 0.00001 ) + 0.0001
+				: 0
+
+			obj.acceleration = obj.acceleration > 0
+				? obj.acceleration - ( delta * 0.005 )
+				: 0
+	
+			if ( distance )
+			{
+				player.position.x =
+					bound( distance
+					* Math.cos( ( obj.rotation * 360 ) * Math.PI / 180 )
+					+ player.position.x )
+	
+				player.position.y =
+					bound( ( distance * ( ctx.canvas.width / ctx.canvas.height ) ) 
+					* Math.sin(  ( obj.rotation * 360 ) * Math.PI / 180 )
+					+ player.position.y )
+			}
+		}
+	}
+
+
+
+	/**
+	 * 
+	 * 
+	 * CAPSULE
+	 * 
+	 * 
+	 *  
+	 */
+
+
+	private isCapsule( component: ComponentGeneric ): component is ComponentTyped<CapsuleComponent>
+	{
+		return component.instance instanceof CapsuleComponent
+	}
+ 
+	private updateCapsule( delta: number, ctx: CanvasRenderingContext2D, capsule: ComponentTyped<CapsuleComponent> )
+	{
+		const { instance: obj } = capsule
+
+		if ( obj.moving && obj.occupiedBy )
+		{
+			const player = this.components[ this.idMap[ obj.occupiedBy ] ]
+
+			if ( !this.isPlayer( player ) ) return
+
+			capsule.position.x =
+				bound( ( 0.0001 * delta )
+				* Math.cos( ( player.instance.rotation * 360 ) * Math.PI / 180 )
+				+ capsule.position.x )
+
+			capsule.position.y =
+				bound( ( ( 0.0001 * delta ) * ( ctx.canvas.width / ctx.canvas.height ) ) 
+				* Math.sin(  ( player.instance.rotation * 360 ) * Math.PI / 180 )
+				+ capsule.position.y )
+		}
+	}
+
+
+
+
+	/**
+	 * 
+	 * 
+	 * PUBLIC METHODS
+	 * 
+	 * 
+	 *  
+	 */
+
+	update( delta: number, ctx: CanvasRenderingContext2D )
+	{
+		for ( const component of this.components )
+		{
+			if ( this.isPlayer( component ) )
+			{
+				this.updatePlayer( delta, ctx, component )
+			}
+
+			if ( this.isCapsule( component ) )
+			{
+				this.updateCapsule( delta, ctx, component )
+			}
+		}
+	}
+
+	next( component: ComponentEntity )
+	{
+		this.idMap[ component.id ] = this.components.length 
+
+		this.components.push( {
+			id: component.id,
+			instance: component.instance,
+			position: {
+				x: Math.random() * 0.5 + 0.2,
+				y: Math.random() * 0.5 + 0.2
+			}
+		} )
+	}
+
+	pos( id: string )
+	{
+		return this.components[ this.idMap[ id ] ].position
+	}
+}

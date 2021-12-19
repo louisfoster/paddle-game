@@ -95,5 +95,31 @@ interface CanvasCoords
 
 interface Drawable
 {
-	draw(delta: number, ctx: CanvasRenderingContext2D, vectorToCanvasCoords: (vector: Vector) => CanvasCoords): void
+	draw(ctx: CanvasRenderingContext2D, pos: Vector): void
+}
+
+interface Collidable
+{
+	radius: number
+}
+
+interface Player extends Collidable
+{
+	rotation: number
+	acceleration: number
+	inCapsule: string
+}
+
+interface Capsule extends Collidable
+{
+	moving: boolean
+	occupiedBy: string
+}
+
+type Component = Player | Capsule
+
+interface ComponentEntity
+{
+	id: string
+	instance: Component
 }
