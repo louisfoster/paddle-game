@@ -7,6 +7,7 @@ import { PlayerComponent } from "../Component/player"
 import { CapsuleComponent } from "../Component/capsule"
 import { PhysicalSystem } from "../System/physical"
 import { CollisionSystem } from "../System/collision"
+import { InputSystem } from "../System/input"
 
 
 
@@ -21,8 +22,6 @@ import { CollisionSystem } from "../System/collision"
 export class GameCanvas extends ComponentBase
 {
 	private state: {
-		rotation: number
-		rotateDirection: number
 		circles: boolean[]
 		noteIndex: number
 		previousTime: number
@@ -40,6 +39,8 @@ export class GameCanvas extends ComponentBase
 
 	private collisionSystem: CollisionSystem
 
+	private inputSystem: InputSystem
+
 	constructor() 
 	{
 		super( `game-canvas` )
@@ -47,6 +48,8 @@ export class GameCanvas extends ComponentBase
 		this.physicalSystem = new PhysicalSystem()
 
 		this.collisionSystem = new CollisionSystem( this.physicalSystem )
+
+		this.inputSystem = new InputSystem()
 
 		this.player = new PlayerComponent()
 
@@ -62,110 +65,17 @@ export class GameCanvas extends ComponentBase
 			this.physicalSystem.next( { id: entity, instance: this.entities[ entity ] } )
 
 			this.collisionSystem.next( { id: entity, instance: this.entities[ entity ] } )
+
+			this.inputSystem.next( { id: entity, instance: this.entities[ entity ] } )
 		}
 
 		this.state = {
-			rotation: 0.15,
-			rotateDirection: 0,
 			circles: [],
 			noteIndex: 0,
 			previousTime: 0
 		}
 
 		const ev = listen( document )
-
-		ev.on( `keydown` ).do( ( event ) =>
-		{
-			const key = event.key
-
-			switch( key )
-			{
-				case `ArrowUp`:
-					// this.player.moveForward()
-					// this.capsule.moving = true
-
-					break
-
-				case `ArrowLeft`:
-					this.state.rotateDirection = -1
-
-					break
-					
-				case `ArrowRight`:
-					this.state.rotateDirection = 1
-
-					break
-			}
-		} )
-
-		ev.on( `keyup` ).do( ( event ) =>
-		{
-			const key = event.key
-
-			switch( key )
-			{
-				case `ArrowUp`:
-					this.player.moveForward()
-					// this.capsule.moving = false
-
-					break
-
-				case `ArrowLeft`:
-
-				case `ArrowRight`:
-
-					this.state.rotateDirection = 0
-
-					break
-			}
-		} )
-		// do sound
-
-		/*
-		//create a synth and connect it to the main output (your speakers)
-		// const synth = new PolySynth( Synth ).toDestination()
-
-		let capture = false
-
-		ev.on( `mousedown` ).do( () =>
-		{
-			capture = true
-
-
-			// https://tonejs.github.io/docs/14.7.77/Transport.html
-
-			// const now = _now()
-
-			// synth.triggerAttack( `D4`, now )
-
-			// synth.triggerAttack( `F4`, now + 0.5 )
-
-			// synth.triggerAttack( `A4`, now + 1 )
-
-			// synth.triggerAttack( `C5`, now + 1.5 )
-
-			// synth.triggerAttack( `E5`, now + 2 )
-
-			// synth.triggerRelease( [ `D4`, `F4`, `A4`, `C5`, `E5` ], now + 4 )
-		} )
-
-		ev.on( `mouseup` ).do( () =>
-		{
-			capture = false
-
-			// console.log( points )
-		} )
-
-		ev.on( `mousemove` ).do( ( event ) =>
-		{
-			if ( !capture || !this.ctx ) return
-
-			// points.push( {
-			// 	x: this.bound( event.clientX / this.ctx.canvas.width ),
-			// 	y: this.bound( event.clientY / this.ctx.canvas.height )
-			// } )
-		} )
-		*/
 
 		let loop: Loop
 
@@ -237,13 +147,15 @@ export class GameCanvas extends ComponentBase
 
 		ctx.fillRect( 0, 0, canvas.width, canvas.height )
 
+		this.inputSystem.update()
+
 		this.physicalSystem.update( delta, ctx )
 
 		this.collisionSystem.update( ctx )
 
 		this.drawPoints( ctx )
 
-		this.character( ctx )
+		this.player.draw( ctx, this.physicalSystem.pos( `0` ) )
 
 		this.capsule.draw( ctx, this.physicalSystem.pos( `1` ) )
 
@@ -261,18 +173,6 @@ export class GameCanvas extends ComponentBase
 		canvas.width = width
 
 		canvas.height = height
-	}
-
-	private character( ctx: CanvasRenderingContext2D )
-	{
-		if ( this.state.rotateDirection !== 0 )
-		{
-			this.state.rotation = this.state.rotation + ( 0.02 * this.state.rotateDirection )
-
-			this.player.setRotation( this.state.rotation )
-		}
-
-		this.player.draw( ctx, this.physicalSystem.pos( `0` ) )
 	}
 
 	private drawPoints( ctx: CanvasRenderingContext2D )
