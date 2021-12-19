@@ -5,15 +5,18 @@
  * - if capsules collide, do nothing
  */
 
-import { CapsuleComponent } from "../Component/capsule"
+import { CapsuleComponent, CapsuleMove } from "../Component/capsule"
 import { PlayerComponent } from "../Component/player"
 import { vectorToCanvasCoords } from "../helpers"
 import type { PhysicalSystem } from "./physical"
 
+
+type CollidableComponent = Collidable & Component
+
 interface ComponentGeneric
 {
 	id: string
-	instance: Component
+	instance: CollidableComponent
 }
 
 interface PlayerCapsuleIntersect
@@ -127,7 +130,8 @@ export class CollisionSystem implements Observer<ComponentEntity>
 			this.whenPlayerCapsuleIntersect( c0, c1 )
 				.do( ( { capsule, player, capsuleID, playerID } ) =>
 				{
-					if ( player.inCapsule || capsule.occupiedBy ) return
+					// TODO: remove moving state condition
+					if ( player.inCapsule || capsule.occupiedBy || capsule.moving !== CapsuleMove.pre ) return
 
 					player.inCapsule = capsuleID
 
@@ -136,8 +140,15 @@ export class CollisionSystem implements Observer<ComponentEntity>
 		}
 	}
 
+	private isCollidable( component: Component ): component is CollidableComponent
+	{
+		return `radius` in component
+	}
+
 	next( component: ComponentEntity )
 	{
+		if ( !this.isCollidable( component.instance ) ) return
+
 		this.idMap[ component.id ] = this.components.length 
 
 		this.components.push( {

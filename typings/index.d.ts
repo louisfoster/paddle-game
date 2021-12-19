@@ -112,11 +112,16 @@ interface Player extends Collidable
 
 interface Capsule extends Collidable
 {
-	moving: boolean
+	moving: `pre` | `active` | `end` | `sequence`
 	occupiedBy: string
 }
 
-type Component = Player | Capsule
+interface Sequencer
+{
+	fromCapsule: string
+}
+
+type Component = Player | Capsule | Sequencer
 
 interface ComponentEntity
 {

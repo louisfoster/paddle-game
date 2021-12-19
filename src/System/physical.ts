@@ -7,9 +7,10 @@
  * - rotate player
  */
 
-import { CapsuleComponent } from "../Component/capsule"
+import { SequencerComponent } from "../Component/sequencer"
+import { CapsuleComponent, CapsuleMove } from "../Component/capsule"
 import { PlayerComponent } from "../Component/player"
-import { bound } from "../helpers"
+import { bound, randomPosition } from "../helpers"
 
 interface ComponentTyped<T>
 {
@@ -65,6 +66,19 @@ export class PhysicalSystem implements Observer<ComponentEntity>
 			player.position.x = capsule.position.x
 
 			player.position.y = capsule.position.y
+
+			if ( capsule.instance.moving === CapsuleMove.end )
+			{
+				const { x, y } = randomPosition()
+
+				player.position.x = x
+
+				player.position.y = y
+
+				player.instance.inCapsule = ``
+
+				capsule.instance.occupiedBy = ``
+			}
 		}
 		else
 		{
@@ -112,7 +126,7 @@ export class PhysicalSystem implements Observer<ComponentEntity>
 	{
 		const { instance: obj } = capsule
 
-		if ( obj.moving && obj.occupiedBy )
+		if ( obj.moving === CapsuleMove.active && obj.occupiedBy )
 		{
 			const player = this.components[ this.idMap[ obj.occupiedBy ] ]
 
@@ -127,6 +141,44 @@ export class PhysicalSystem implements Observer<ComponentEntity>
 				bound( ( ( 0.0001 * delta ) * ( ctx.canvas.width / ctx.canvas.height ) ) 
 				* Math.sin(  ( player.instance.rotation * 360 ) * Math.PI / 180 )
 				+ capsule.position.y )
+		}
+	}
+
+
+
+	/**
+	 * 
+	 * 
+	 * SEQUENCER
+	 * 
+	 * 
+	 *  
+	 */
+
+
+	private isSequencer( component: ComponentGeneric ): component is ComponentTyped<SequencerComponent>
+	{
+		return component.instance instanceof SequencerComponent
+	}
+ 
+	private updateSequencer( ctx: CanvasRenderingContext2D, sequencer: ComponentTyped<SequencerComponent> )
+	{
+		const { instance: obj } = sequencer
+
+		const capsule = this.components[ this.idMap[ obj.fromCapsule ] ]
+
+		if ( this.isCapsule( capsule ) )
+		{
+			if ( capsule.instance.moving === CapsuleMove.active )
+			{
+				obj.next( { pos: capsule.position } )
+			}
+			else if ( capsule.instance.moving === CapsuleMove.end )
+			{
+				obj.next( { build: ctx } )
+
+				capsule.instance.moving = CapsuleMove.sequence
+			}
 		}
 	}
 
@@ -155,6 +207,11 @@ export class PhysicalSystem implements Observer<ComponentEntity>
 			{
 				this.updateCapsule( delta, ctx, component )
 			}
+
+			if ( this.isSequencer( component ) )
+			{
+				this.updateSequencer( ctx, component )
+			}
 		}
 	}
 
@@ -165,10 +222,7 @@ export class PhysicalSystem implements Observer<ComponentEntity>
 		this.components.push( {
 			id: component.id,
 			instance: component.instance,
-			position: {
-				x: Math.random() * 0.5 + 0.2,
-				y: Math.random() * 0.5 + 0.2
-			}
+			position: randomPosition()
 		} )
 	}
 

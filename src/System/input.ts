@@ -1,4 +1,4 @@
-import { CapsuleComponent } from "../Component/capsule"
+import { CapsuleComponent, CapsuleMove } from "../Component/capsule"
 import { PlayerComponent } from "../Component/player"
 import { listen } from "../helpers"
 
@@ -104,8 +104,6 @@ export class InputSystem implements Observer<ComponentEntity>
 
 	public update()
 	{
-		
-
 		for ( const component of this.components )
 		{
 			const obj = component.instance
@@ -114,7 +112,15 @@ export class InputSystem implements Observer<ComponentEntity>
 			{
 				if ( obj.occupiedBy )
 				{
-					obj.moving = !!this.move
+					if ( this.move )
+					{
+						if ( obj.moving === CapsuleMove.pre )
+							obj.moving = CapsuleMove.active
+					}
+					else if ( obj.moving === CapsuleMove.active )
+					{
+						obj.moving = CapsuleMove.end
+					}
 				}
 			}
 			else if ( this.isPlayer( obj ) )

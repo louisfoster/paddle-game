@@ -13,9 +13,17 @@ import { vectorToCanvasCoords } from "../helpers"
  * - 
  */
 
+export enum CapsuleMove
+{
+	pre = `pre`,
+	active = `active`,
+	end = `end`,
+	sequence = `sequence`
+}
+
 export class CapsuleComponent implements Drawable, Capsule
 {
-	public moving: boolean
+	public moving: CapsuleMove
 
 	public occupiedBy: string
 	
@@ -23,7 +31,7 @@ export class CapsuleComponent implements Drawable, Capsule
 
 	constructor()
 	{
-		this.moving = false
+		this.moving = CapsuleMove.pre
 		
 		this.occupiedBy = ``
 
@@ -38,6 +46,9 @@ export class CapsuleComponent implements Drawable, Capsule
 	 */
 	public draw( ctx: CanvasRenderingContext2D, pos: Vector ): void
 	{
+		// TODO: temporary, will remove
+		if ( this.moving === CapsuleMove.sequence ) return
+
 		const { left, top } = vectorToCanvasCoords( ctx.canvas, pos )
 
 		ctx.strokeStyle = `#902`
