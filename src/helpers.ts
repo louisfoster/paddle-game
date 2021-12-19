@@ -91,3 +91,8 @@ export async function loadHTML( path: string ): Promise<string>
 {
 	return await fetch( path ).then( data => data.text() )
 }
+
+export function bound( value: number )
+{
+	return Math.max( 0, Math.min( 1, value ) )
+}

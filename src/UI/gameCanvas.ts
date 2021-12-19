@@ -1,45 +1,48 @@
 import { ComponentBase } from "../componentBase"
 import { define } from "web-component-decorator"
-import { el, listen, using } from "../helpers"
+import { bound, el, listen, using } from "../helpers"
 import { Synth, PolySynth, Loop, Transport } from "tone"
 import { points } from "../points"
+import { Player } from "../Component/player"
 
-interface Vector
-{
-	x: number
-	y: number
-}
 
-interface CanvasCoords
-{
-	left: number
-	top: number
-}
+
+/**
+ * - player tap launch forward
+ * 	- opt: build up energy, further launch
+ * - player bouncing off walls, other chars, occupied capsules
+ * - capsule drawing, occupying
+ * - varying size notes
+ * - reset note count for path on resize
+ */
 
 @define( `game-canvas` )
 export class GameCanvas extends ComponentBase
 {
 	private state: {
-		position: Vector
 		rotation: number
+		rotateDirection: number
 		circles: boolean[]
 		noteIndex: number
+		previousTime: number
 	}
 
 	private ctx?: CanvasRenderingContext2D
+
+	private player: Player
 
 	constructor() 
 	{
 		super( `game-canvas` )
 
+		this.player = new Player()
+
 		this.state = {
-			position: {
-				x: 0.5,
-				y: 0.5
-			},
 			rotation: 0.15,
+			rotateDirection: 0,
 			circles: [],
-			noteIndex: 0
+			noteIndex: 0,
+			previousTime: 0
 		}
 
 		const ev = listen( document )
@@ -50,18 +53,34 @@ export class GameCanvas extends ComponentBase
 
 			switch( key )
 			{
-				case `ArrowUp`:
-					this.forward()
-
-					break
-
 				case `ArrowLeft`:
-					this.setRotation( this.state.rotation - 0.02 )
+					this.state.rotateDirection = -1
 
 					break
 					
 				case `ArrowRight`:
-					this.setRotation( this.state.rotation + 0.02 )
+					this.state.rotateDirection = 1
+
+					break
+			}
+		} )
+
+		ev.on( `keyup` ).do( ( event ) =>
+		{
+			const key = event.key
+
+			switch( key )
+			{
+				case `ArrowUp`:
+					this.player.moveForward()
+
+					break
+
+				case `ArrowLeft`:
+
+				case `ArrowRight`:
+
+					this.state.rotateDirection = 0
 
 					break
 			}
@@ -154,16 +173,13 @@ export class GameCanvas extends ComponentBase
 		} )
 	}
 
-	private bound( value: number )
-	{
-		return Math.max( 0, Math.min( 1, value ) )
-	}
-
 	private init( canvas: HTMLCanvasElement )
 	{
 		this.ctx = this.getCtx( canvas )
 
-		this.render( this.ctx )
+		this.state.previousTime = performance.now()
+
+		this.render( this.state.previousTime, this.ctx )
 	}
 
 	private getCtx( canvas: HTMLCanvasElement )
@@ -175,8 +191,10 @@ export class GameCanvas extends ComponentBase
 		return ctx
 	}
 
-	private render( ctx: CanvasRenderingContext2D )
+	private render( time: number, ctx: CanvasRenderingContext2D )
 	{
+		const delta = time - this.state.previousTime
+
 		const canvas = ctx.canvas
 
 		this.setWH( canvas )
@@ -187,9 +205,11 @@ export class GameCanvas extends ComponentBase
 
 		this.drawPoints( ctx )
 
-		this.character( ctx )
+		this.character( delta, ctx )
 
-		requestAnimationFrame( () => this.render( ctx ) )
+		this.state.previousTime = time
+
+		requestAnimationFrame( ( time ) => this.render( time, ctx ) )
 	}
 
 	private setWH( canvas: HTMLCanvasElement )
@@ -203,47 +223,16 @@ export class GameCanvas extends ComponentBase
 		canvas.height = height
 	}
 
-	private character( ctx: CanvasRenderingContext2D )
+	private character( delta: number, ctx: CanvasRenderingContext2D )
 	{
-		const pos = this.state.position
+		if ( this.state.rotateDirection !== 0 )
+		{
+			this.state.rotation = this.state.rotation + ( 0.02 * this.state.rotateDirection )
 
-		const { left, top } = this.vectorToCanvasCoords( ctx.canvas, pos )
+			this.player.setRotation( this.state.rotation )
+		}
 
-		ctx.strokeStyle = `#15F`
-
-		ctx.fillStyle = `#15F`
-
-		ctx.lineWidth = 2
-
-		// circle
-
-		ctx.beginPath()
-
-		ctx.ellipse( left, top, 20, 20, 0, 0, Math.PI * 2 )
-
-		ctx.stroke()
-
-		ctx.closePath()
-
-		// triangle
-
-		const path = new Path2D()
-
-		path.moveTo( -5, -20 )
-
-		path.lineTo( 5, -20 )
-
-		path.lineTo( 0, 20 )
-
-		path.closePath()
-
-		ctx.setTransform( 1, 0, 0, 1, left, top )
-
-		ctx.rotate( ( this.state.rotation * 360 - 90 ) * Math.PI / 180 )
-
-		ctx.fill( path )
-
-		ctx.setTransform( 1, 0, 0, 1, 0, 0 )
+		this.player.draw( delta, ctx, vector => this.vectorToCanvasCoords( ctx.canvas, vector ) )
 	}
 
 	private drawPoints( ctx: CanvasRenderingContext2D )
@@ -379,26 +368,6 @@ export class GameCanvas extends ComponentBase
 			left: vector.x * canvas.width,
 			top: vector.y * canvas.height
 		}
-	}
-
-	// range 0 - 1
-	public setRotation( value: number )
-	{
-		this.state.rotation = value
-	}
-
-	// new vector
-	public forward()
-	{
-		// need momentum
-
-		if ( !this.ctx ) return
-
-		this.state.position.x =
-			0.005 * Math.cos( ( this.state.rotation * 360 ) * Math.PI / 180 ) + this.state.position.x
-
-		this.state.position.y =
-			( 0.005 * ( this.ctx.canvas.width / this.ctx.canvas.height ) ) * Math.sin(  ( this.state.rotation * 360 ) * Math.PI / 180 ) + this.state.position.y
 	}
 
 	connectedCallback(): void 

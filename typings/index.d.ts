@@ -78,3 +78,22 @@ interface EventExtended extends GlobalEventHandlersEventMap
 {
 	//
 }
+
+
+
+interface Vector
+{
+	x: number
+	y: number
+}
+
+interface CanvasCoords
+{
+	left: number
+	top: number
+}
+
+interface Drawable
+{
+	draw(delta: number, ctx: CanvasRenderingContext2D, vectorToCanvasCoords: (vector: Vector) => CanvasCoords): void
+}
