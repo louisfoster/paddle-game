@@ -1,13 +1,14 @@
 import { ComponentBase } from "../componentBase"
 import { define } from "web-component-decorator"
-import { el, using } from "../helpers"
+import { el, listen, using } from "../helpers"
 import { PlayerComponent } from "../Component/player"
 import { CapsuleComponent } from "../Component/capsule"
 import { PhysicalSystem } from "../System/physical"
 import { CollisionSystem } from "../System/collision"
 import { InputSystem } from "../System/input"
 import { SequencerComponent } from "../Component/sequencer"
-import { PolySynth, Synth } from "tone"
+import { Loop, MembraneSynth, PolySynth, Synth, Transport } from "tone"
+import type { Frequency } from "tone/build/esm/core/type/Units"
 
 
 
@@ -43,6 +44,8 @@ export class GameCanvas extends ComponentBase
 
 	private synth: PolySynth
 
+	private loop: Loop
+
 	constructor() 
 	{
 		super( `game-canvas` )
@@ -53,10 +56,6 @@ export class GameCanvas extends ComponentBase
 
 		this.inputSystem = new InputSystem()
 
-		this.synth = new PolySynth( Synth ).toDestination()
-
-		this.synth.maxPolyphony = 100
-
 		this.player = []
 
 		this.sequencer = []
@@ -64,6 +63,56 @@ export class GameCanvas extends ComponentBase
 		this.capsule = []
 
 		this.entities = {}
+
+		this.synth = new PolySynth( Synth, { volume: -8, detune: -1200 } ).toDestination()
+
+		this.synth.maxPolyphony = 100
+
+		const synth2 = new PolySynth( MembraneSynth, { volume: -12, detune: -3600 } ).toDestination()
+
+		synth2.maxPolyphony = 100
+
+		this.loop = new Loop( time =>
+		{
+			const notes = this.sequencer.reduce<[Frequency[], Frequency[]]>( ( arr, s ) => 
+			{
+				const f = s[ 1 ].audio()
+
+				const i = Math.round( Math.random() )
+
+				f && !arr[ i ].includes( f ) && arr[ i ].push( f )
+
+				return arr
+			}, [ [], [] ] )
+
+			notes[ 0 ].forEach( ( v, i ) => 
+			{
+				if ( Math.random() > 0.95 )
+				{
+					const x = String( v )
+
+					notes[ 0 ][ i ] = `${x[ 0 ]}7`
+				}
+			} )
+
+			this.synth.triggerAttackRelease( notes[ 0 ], `16n`, time )
+
+			synth2.triggerAttackRelease( notes[ 1 ], `16n`, time )
+		}, `16n` )
+
+		// TODO: replace with better initial interaction
+		const unsub = listen( document ).on( `click` ).do( () =>
+		{
+			unsub()
+
+			console.log( `init audio loop` )
+
+			this.loop.start( 0 )
+
+			Transport.bpm.rampTo( 120, 1 )
+
+			Transport.start()
+		} )
 
 		this.createPlayer()
 
@@ -74,17 +123,16 @@ export class GameCanvas extends ComponentBase
 			this.createCapsule()
 
 			count += 1
-		}, 500 )
+		}, 100 )
 
 		const int = setInterval( () =>
 		{
 			this.createCapsule()
 
-
 			count += 1
 
-			if ( count === 5 ) clearInterval( int )
-		}, 15000 )
+			if ( count === 7 ) clearInterval( int )
+		}, 1000 )
 
 		this.state = {
 			previousTime: 0
@@ -205,7 +253,7 @@ export class GameCanvas extends ComponentBase
 	{
 		const sequencerID = this.generateID()
 
-		const sequencer = new SequencerComponent( capsuleID, this.synth )
+		const sequencer = new SequencerComponent( capsuleID )
 		
 		this.entities[ sequencerID ] = sequencer
 

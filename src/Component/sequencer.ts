@@ -1,6 +1,6 @@
 import { vectorToCanvasCoords } from "../helpers"
-import { PolySynth, Loop, Transport } from "tone"
 import simplify from "simplify-js"
+import type { Frequency } from "tone/build/esm/core/type/Units"
 
 /**
  * - on moving capsule, preserve and draw positions
@@ -24,15 +24,17 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 
 	private points: Vector[]
 
-	private loop?: Loop
-
 	private circles: {left: number; top: number; active: boolean}[]
 
 	private noteIndex: number
 
 	private building: boolean
 
-	constructor( public fromCapsule: string, private synth: PolySynth )
+	private baseNotes: string[]
+
+	private notes: string[]
+
+	constructor( public fromCapsule: string )
 	{
 		this.rawPoints = []
 
@@ -43,6 +45,10 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 		this.noteIndex = 0
 
 		this.building = false
+
+		this.baseNotes = [ `D4`, `F4`, `A4`, `C5`, `E5`, `` ]
+
+		this.notes = []
 	}
 
 	private generateCircles( ctx: CanvasRenderingContext2D )
@@ -89,13 +95,17 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 			// continue along line
 			p0 = this.interpolate( next, p1, 20 / this.lineDistance( next, p1 ) )
 		}
+
+		this.notes = Array( this.circles.length )
+			.fill( undefined )
+			.map( () => this.baseNotes[ ~~( this.baseNotes.length * Math.random() ) ] )
 	}
 
 	private drawPoints( ctx: CanvasRenderingContext2D )
 	{
-		if ( this.rawPoints.length === 0 || this.loop ) return
+		if ( this.rawPoints.length === 0 || this.circles.length > 0 ) return
 
-		const points = this.loop !== undefined ? this.points : this.rawPoints
+		const points = this.points.length > 0 ? this.points : this.rawPoints
 
 		const path = new Path2D()
 
@@ -131,7 +141,7 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 	 */
 	private drawCircles( ctx: CanvasRenderingContext2D )
 	{
-		if ( !this.loop ) return
+		if ( this.circles.length === 0 ) return
 
 		ctx.strokeStyle = `#1da`
 
@@ -174,39 +184,25 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 		}
 	}
 
-	private audio()
+	public audio(): Frequency | undefined
 	{
-		if ( this.loop !== undefined ) return
+		if ( this.notes.length === 0 ) return
 
-		const baseNotes = [ `D4`, `F4`, `A4`, `C5`, `E5` ]
+		if ( this.circles[ this.noteIndex - 1 ] )
+			this.circles[ this.noteIndex - 1 ].active = false
+		else if ( this.noteIndex === 0 && this.circles[ this.circles.length - 1 ] )
+			this.circles[ this.circles.length - 1 ].active = false
 
-		const notes = Array( this.circles.length )
-			.fill( undefined )
-			.map( () => baseNotes[ ~~( baseNotes.length * Math.random() ) ] )
+		const note = this.notes[ this.noteIndex % this.notes.length ]
 
-		this.loop = new Loop( time => 
-		{
-			if ( this.circles[ this.noteIndex - 1 ] )
-				this.circles[ this.noteIndex - 1 ].active = false
-			else if ( this.noteIndex === 0 && this.circles[ this.circles.length - 1 ] )
-				this.circles[ this.circles.length - 1 ].active = false
+		this.circles[ this.noteIndex ].active = true
 
-			const note = notes[ this.noteIndex % notes.length ]
+		this.noteIndex += 1
 
-			this.circles[ this.noteIndex ].active = true
+		if ( this.noteIndex === this.circles.length )
+			this.noteIndex = 0
 
-			this.synth.triggerAttackRelease( note, `16n`, time )
-
-			this.noteIndex += 1
-
-			if ( this.noteIndex === this.circles.length )
-				this.noteIndex = 0
-		}, `16n` ).start( 0 )
-
-
-		Transport.bpm.rampTo( 120, 1 )
-
-		Transport.start()
+		return note
 	}
 
 	/**
@@ -233,8 +229,6 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 			this.points = simplify( this.rawPoints, 0.01, true )
 
 			this.generateCircles( build )
-
-			this.audio()
 		}
 	}
 }
