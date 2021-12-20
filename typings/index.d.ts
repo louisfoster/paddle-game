@@ -119,6 +119,7 @@ interface Capsule extends Collidable
 interface Sequencer
 {
 	fromCapsule: string
+	audio(): Frequency | undefined
 }
 
 type Component = Player | Capsule | Sequencer
