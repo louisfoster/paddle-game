@@ -1,5 +1,6 @@
 import "./viewRender"
 import "./gameCanvas"
+import "./inputSelect"
 
 export function loadUI()
 {

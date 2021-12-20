@@ -29,6 +29,8 @@ export class ComponentBase extends HTMLElement
 		{
 			this.isDefined = true
 
+			componentMount( this )
+
 			for ( const stylesheet of this.stylesheets )
 			{
 				this.setStylesheet( stylesheet )
@@ -64,6 +66,10 @@ export class ComponentBase extends HTMLElement
 
 	connectedCallback()
 	{
-		componentMount( this )
+		// console.log( this )
+
+		// console.log( this.getRootNode() )
+
+		// componentMount( this )
 	}
 }

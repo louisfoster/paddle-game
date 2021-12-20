@@ -80,6 +80,35 @@ interface EventExtended extends GlobalEventHandlersEventMap
 }
 
 
+/* InputMode */
+
+
+interface InputModeObservable
+{
+	readonly inputModeObservable: {
+		subscribe(inputModeObserver: Observer<InputMode>): void
+	}
+}
+
+type InputMode = `keyboard` | `controller`
+
+
+/* UpdateLoop */
+
+
+interface UpdateLoopObservable
+{
+	readonly updateLoopObservable: {
+		subscribe(updateLoopObserver: Observer<UpdateLoop>): void
+	}
+}
+
+interface UpdateLoop
+{
+	delta: number
+	ctx: CanvasRenderingContext2D
+}
+
 
 interface Vector
 {

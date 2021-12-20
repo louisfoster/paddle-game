@@ -1,4 +1,3 @@
-import { listen } from "../helpers"
 import { Loop, MembraneSynth, PolySynth, Synth, Transport } from "tone"
 import type { Frequency } from "tone/build/esm/core/type/Units"
 
@@ -19,11 +18,9 @@ export class AudioSystem implements Observer<ComponentEntity>
 		this.components = []
 
 		this.idMap = {}
-
-		this.init()
 	}
 
-	private init()
+	public init()
 	{
 		const synth = new PolySynth( Synth, { volume: -8, detune: -1200 } ).toDestination()
 
@@ -61,19 +58,13 @@ export class AudioSystem implements Observer<ComponentEntity>
 			synth2.triggerAttackRelease( notes[ 1 ], `16n`, time )
 		}, `16n` )
 
-		// TODO: replace with better initial interaction
-		const unsub = listen( document ).on( `click` ).do( () =>
-		{
-			unsub()
+		console.log( `init audio loop` )
 
-			console.log( `init audio loop` )
+		loop.start( 0 )
 
-			loop.start( 0 )
+		Transport.bpm.rampTo( 120, 1 )
 
-			Transport.bpm.rampTo( 120, 1 )
-
-			Transport.start()
-		} )
+		Transport.start()
 	}
 
 	private isSequencer( component: ComponentEntity ): component is SequencerComponent

@@ -22,7 +22,16 @@
 		<canvas></canvas>
 	</template>
 
+	<template id="input-select">
+		<div>
+			<p>Select your preferred input</p>
+			<button id="keyboard">Keyboard</button>
+			<button id="controller">Controller</button>
+		</div>
+	</template>
+
 	<template id="view-render">
+		<input-select></input-select>
 		<slot></slot>
 	</template>
 
