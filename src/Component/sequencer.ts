@@ -1,4 +1,4 @@
-import { vectorToCanvasCoords } from "../helpers"
+import { canvasCoordsToVector, vectorToCanvasCoords } from "../helpers"
 import simplify from "simplify-js"
 import type { Frequency } from "tone/build/esm/core/type/Units"
 
@@ -24,7 +24,7 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 
 	private points: Vector[]
 
-	private circles: {left: number; top: number; active: boolean}[]
+	private circles: ( Vector & {active: boolean} )[]
 
 	private noteIndex: number
 
@@ -46,9 +46,14 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 
 		this.building = false
 
-		this.baseNotes = [ `D4`, `F4`, `A4`, `C5`, `E5`, `` ]
-
 		this.notes = []
+
+		this.baseNotes = [ `D4`, `F4`, `A4`, `C5`, `E5`, `` ]
+	}
+
+	get activeCirclePosition()
+	{
+		return this.circles.find( c => c.active )
 	}
 
 	private generateCircles( ctx: CanvasRenderingContext2D )
@@ -72,7 +77,11 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 			const next = this.interpolate( p0, p1, 20 / this.lineDistance( p0, p1 ) )
 
 			if ( this.circles[ circleIndex ] === undefined )
-				this.circles[ circleIndex ] = { active: false, top: next.top, left: next.left }
+			{
+				this.circles[ circleIndex ] = Object.assign(
+					{ active: false },
+					canvasCoordsToVector( ctx.canvas, next ) )
+			}
 
 			circleIndex += 1
 
@@ -141,15 +150,17 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 	 */
 	private drawCircles( ctx: CanvasRenderingContext2D )
 	{
-		if ( this.circles.length === 0 ) return
+		if ( this.circles.length === 0 || this.notes.length === 0 ) return
 
 		ctx.strokeStyle = `#1da`
 
 		ctx.fillStyle = `#3fc`
 
-		for ( const { active, left, top } of this.circles )
+		for ( const { active, ...vector } of this.circles )
 		{
 			ctx.beginPath()
+
+			const { left, top } = vectorToCanvasCoords( ctx.canvas, vector )
 	
 			ctx.ellipse( left, top, 20, 20, 0, 0, Math.PI * 2 )
 	
@@ -230,5 +241,20 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 
 			this.generateCircles( build )
 		}
+	}
+
+	public reset()
+	{
+		this.rawPoints = []
+
+		this.points = []
+
+		this.circles = []
+
+		this.noteIndex = 0
+
+		this.building = false
+
+		this.notes = []
 	}
 }

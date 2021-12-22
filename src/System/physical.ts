@@ -1,12 +1,3 @@
-/**
- * on user forward input
- * - if player, and player isn't in capsule, and player has acceleration, move player with momentum
- * - if capsule, and capsule has player, get player rotation, move capsule + player forward
- * 
- * on user rotate input
- * - rotate player
- */
-
 import { SequencerComponent } from "../Component/sequencer"
 import { CapsuleComponent, CapsuleMove } from "../Component/capsule"
 import { PlayerComponent } from "../Component/player"
@@ -26,6 +17,15 @@ interface ComponentGeneric
 	position: Vector
 }
 
+
+/**
+ * on user forward input
+ * - if player, and player isn't in capsule, and player has acceleration, move player with momentum
+ * - if capsule, and capsule has player, get player rotation, move capsule + player forward
+ * 
+ * on user rotate input
+ * - rotate player
+ */
 export class PhysicalSystem implements Observer<ComponentEntity>
 {
 	private components: ComponentGeneric[]
@@ -178,6 +178,12 @@ export class PhysicalSystem implements Observer<ComponentEntity>
 				obj.next( { build: ctx } )
 
 				capsule.instance.moving = CapsuleMove.sequence
+			}
+			else if ( capsule.instance.moving === CapsuleMove.sequence && obj.activeCirclePosition )
+			{
+				capsule.position.x = obj.activeCirclePosition.x
+
+				capsule.position.y = obj.activeCirclePosition.y
 			}
 		}
 	}

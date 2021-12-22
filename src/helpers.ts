@@ -105,6 +105,14 @@ export function vectorToCanvasCoords( canvas: HTMLCanvasElement, vector: Vector 
 	}
 }
 
+export function canvasCoordsToVector( canvas: HTMLCanvasElement, coords: CanvasCoords ): Vector
+{
+	return {
+		x: coords.left / canvas.width,
+		y: coords.top / canvas.height
+	}
+}
+
 export function randomPosition(): Vector
 {
 	return {

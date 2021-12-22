@@ -23,19 +23,36 @@ export enum CapsuleMove
 
 export class CapsuleComponent implements Drawable, Capsule
 {
-	public moving: CapsuleMove
-
 	public occupiedBy: string
-	
-	public radius: number
 
-	constructor()
+	private _radius: number
+
+	private _moving: CapsuleMove
+
+	constructor( public hasSequence: string )
 	{
-		this.moving = CapsuleMove.pre
+		this._moving = CapsuleMove.pre
 		
 		this.occupiedBy = ``
 
-		this.radius = 30
+		this._radius = 30
+	}
+
+	set moving( value: CapsuleMove )
+	{
+		this._moving = value
+	}
+
+	get moving()
+	{
+		return this._moving
+	}
+
+	get radius()
+	{
+		return this._moving === CapsuleMove.sequence
+			? this._radius
+			: this._radius
 	}
 
 	/**
@@ -47,7 +64,6 @@ export class CapsuleComponent implements Drawable, Capsule
 	public draw( ctx: CanvasRenderingContext2D, pos: Vector ): void
 	{
 		// TODO: temporary, will remove
-		if ( this.moving === CapsuleMove.sequence ) return
 
 		const { left, top } = vectorToCanvasCoords( ctx.canvas, pos )
 

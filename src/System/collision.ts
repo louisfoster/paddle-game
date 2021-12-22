@@ -1,10 +1,4 @@
-/**
- * - get position of all items
- * - detect collisions
- * - if capsule collides with player, player occupies capsule, unless players is already in a capsule
- * - if capsules collide, do nothing
- */
-
+import type { SequencerComponent } from "src/Component/sequencer"
 import { CapsuleComponent, CapsuleMove } from "../Component/capsule"
 import { PlayerComponent } from "../Component/player"
 import { vectorToCanvasCoords } from "../helpers"
@@ -13,11 +7,26 @@ import type { PhysicalSystem } from "./physical"
 
 type CollidableComponent = Collidable & Component
 
-interface ComponentGeneric
+interface ComponentBase
 {
 	id: string
-	instance: CollidableComponent
+	instance: Component
+	collidable: boolean
 }
+
+interface ComponentCollidable extends ComponentBase
+{
+	instance: CollidableComponent
+	collidable: true
+}
+
+interface ComponentUncollidable extends ComponentBase
+{
+	instance: SequencerComponent
+	collidable: false
+}
+
+type ComponentGeneric = ComponentCollidable | ComponentUncollidable
 
 interface PlayerCapsuleIntersect
 {
@@ -27,6 +36,12 @@ interface PlayerCapsuleIntersect
 	playerID: string
 }
 
+/**
+ * - get position of all items
+ * - detect collisions
+ * - if capsule collides with player, player occupies capsule, unless players is already in a capsule
+ * - if capsules collide, do nothing
+ */
 export class CollisionSystem implements Observer<ComponentEntity>
 {
 	private components: ComponentGeneric[]
@@ -58,7 +73,7 @@ export class CollisionSystem implements Observer<ComponentEntity>
 	// intersecting capsules
 	// intersecting player + capsule
 
-	private whenPlayerCapsuleIntersect( componentA: ComponentGeneric, componentB: ComponentGeneric )
+	private whenPlayerCapsuleIntersect( componentA: ComponentBase, componentB: ComponentBase )
 	{
 		let res: PlayerCapsuleIntersect | undefined
 
@@ -102,7 +117,10 @@ export class CollisionSystem implements Observer<ComponentEntity>
 			// requires radius of bounding circle for a component
 			const c0 = this.components[ i ]
 
-			const _pos0 = pos[ c0.id ] || vectorToCanvasCoords( ctx.canvas, this.physicalSystem.pos( c0.id ) )
+			if ( !c0.collidable ) continue
+
+			const _pos0 = pos[ c0.id ] 
+				|| vectorToCanvasCoords( ctx.canvas, this.physicalSystem.pos( c0.id ) )
 
 			if ( !pos[ c0.id ] ) pos[ c0.id ] = _pos0
 
@@ -110,14 +128,20 @@ export class CollisionSystem implements Observer<ComponentEntity>
 			{
 				const c1 = this.components[ j ]
 
-				const _pos1 = pos[ c1.id ] || vectorToCanvasCoords( ctx.canvas, this.physicalSystem.pos( c1.id ) )
+				if ( !c1.collidable ) continue
+
+				const _pos1 = pos[ c1.id ] 
+					|| vectorToCanvasCoords( ctx.canvas, this.physicalSystem.pos( c1.id ) )
 
 				if ( !pos[ c1.id ] ) pos[ c1.id ] = _pos1
 
-				if ( this.intersect( _pos0.left, _pos0.top, c0.instance.radius, _pos1.left, _pos1.top, c1.instance.radius ) )
-				{
-					this.collisions.push( [ c0.id, c1.id ] )
-				}
+				this.intersect(
+					_pos0.left,
+					_pos0.top,
+					c0.instance.radius,
+					_pos1.left,
+					_pos1.top,
+					c1.instance.radius ) && this.collisions.push( [ c0.id, c1.id ] )
 			}
 		}
 
@@ -131,11 +155,33 @@ export class CollisionSystem implements Observer<ComponentEntity>
 				.do( ( { capsule, player, capsuleID, playerID } ) =>
 				{
 					// TODO: remove moving state condition
-					if ( player.inCapsule || capsule.occupiedBy || capsule.moving !== CapsuleMove.pre ) return
+					if ( player.inCapsule || capsule.occupiedBy ) return
 
-					player.inCapsule = capsuleID
+					// if capsule move state is pre, just occupy it
+					if ( capsule.moving === CapsuleMove.pre )
+					{
+						player.inCapsule = capsuleID
 
-					capsule.occupiedBy = playerID
+						capsule.occupiedBy = playerID
+					}
+
+					// if capsule is in sequence mode, occupy it, reset the sequence
+					if ( capsule.moving === CapsuleMove.sequence )
+					{
+						// reset to original state
+						capsule.moving = CapsuleMove.pre
+
+						player.inCapsule = capsuleID
+
+						capsule.occupiedBy = playerID
+
+						const seq = this.components[ this.idMap[ capsule.hasSequence ] ]
+
+						if ( this.isSequencer( seq ) )
+						{
+							seq.instance.reset()
+						}
+					} 
 				} )
 		}
 	}
@@ -145,15 +191,34 @@ export class CollisionSystem implements Observer<ComponentEntity>
 		return `radius` in component
 	}
 
+	private isSequencer( component: ComponentEntity ): component is ComponentUncollidable
+	{
+		return `audio` in component.instance
+	}
+
 	next( component: ComponentEntity )
 	{
-		if ( !this.isCollidable( component.instance ) ) return
+		this.idMap[ component.id ] = this.components.length
 
-		this.idMap[ component.id ] = this.components.length 
+		if ( this.isCollidable( component.instance ) )
+		{
+			const c: ComponentCollidable = {
+				collidable: true,
+				id: component.id,
+				instance: component.instance
+			}
 
-		this.components.push( {
-			id: component.id,
-			instance: component.instance
-		} )
+			this.components.push( c )
+		}
+		else if ( this.isSequencer( component ) )
+		{
+			const c: ComponentUncollidable = {
+				collidable: false,
+				id: component.id,
+				instance: component.instance
+			}
+
+			this.components.push( c )
+		}
 	}
 }

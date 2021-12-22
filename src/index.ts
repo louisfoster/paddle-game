@@ -75,7 +75,10 @@ class Main
 	{
 		this.logSystem.next( { level: `info`, message: `Got component: ${component}` } )
 
-		if ( component instanceof InputSelect || component instanceof GameCanvas || component instanceof ViewRender )
+		if (
+			component instanceof InputSelect
+			|| component instanceof GameCanvas
+			|| component instanceof ViewRender )
 		{
 			this.components.push( component )
 
@@ -88,7 +91,8 @@ class Main
 
 						this.inputSystem.init( mode )
 
-						this.components.forEach( c => c instanceof GameCanvas && c.init() )
+						this.components.forEach( c =>
+							c instanceof GameCanvas && c.init() )
 
 						this.generateEntities()
 					}
@@ -121,7 +125,9 @@ class Main
 	{
 		const capsuleID = this.generateID()
 
-		const capsule = new CapsuleComponent()
+		const sequencerID = this.generateID()
+
+		const capsule = new CapsuleComponent( sequencerID )
 
 		this.entities[ capsuleID ] = capsule
 
@@ -129,13 +135,12 @@ class Main
 
 		this.capsule.push( [ capsuleID, capsule ] )
 
-		this.createSequencer( capsuleID )
+		this.createSequencer( capsuleID, sequencerID )
 
 	}
 
-	private createSequencer( capsuleID: string )
+	private createSequencer( capsuleID: string, sequencerID: string )
 	{
-		const sequencerID = this.generateID()
 
 		const sequencer = new SequencerComponent( capsuleID )
 		
