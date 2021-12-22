@@ -145,10 +145,20 @@ interface Capsule extends Collidable
 	occupiedBy: string
 }
 
+type SoundType = `beat` | `synth`
+
+interface Circle extends Vector
+{
+	active: boolean
+	note: Frequency
+	length: string
+	type: SoundType
+}
+
 interface Sequencer
 {
 	fromCapsule: string
-	audio(): Frequency | undefined
+	audio(): Circle | undefined
 }
 
 type Component = Player | Capsule | Sequencer

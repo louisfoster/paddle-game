@@ -25,8 +25,6 @@ export class CapsuleComponent implements Drawable, Capsule
 {
 	public occupiedBy: string
 
-	private _radius: number
-
 	private _moving: CapsuleMove
 
 	constructor( public hasSequence: string )
@@ -34,8 +32,6 @@ export class CapsuleComponent implements Drawable, Capsule
 		this._moving = CapsuleMove.pre
 		
 		this.occupiedBy = ``
-
-		this._radius = 30
 	}
 
 	set moving( value: CapsuleMove )
@@ -50,9 +46,7 @@ export class CapsuleComponent implements Drawable, Capsule
 
 	get radius()
 	{
-		return this._moving === CapsuleMove.sequence
-			? this._radius
-			: this._radius
+		return 32
 	}
 
 	/**

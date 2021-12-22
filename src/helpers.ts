@@ -120,3 +120,23 @@ export function randomPosition(): Vector
 		y: Math.random()
 	}
 }
+
+// https://www.geeksforgeeks.org/check-two-given-circles-touch-intersect/
+export function doTwoCirclesIntersect( x1: number, y1: number, r1: number, x2: number, y2: number, r2: number )
+{
+	const distSq = ( x1 - x2 ) * ( x1 - x2 ) + ( y1 - y2 ) * ( y1 - y2 )
+
+	const radSumSq = ( r1 + r2 ) * ( r1 + r2 )
+
+	return !( distSq > radSumSq )
+}
+
+export function ranIdx<T>( arr: T[] ): number
+{
+	return ~~( Math.random() * arr.length )
+}
+
+export function pickRan<T>( arr: T[] ): T
+{
+	return arr[ ranIdx( arr ) ]
+}

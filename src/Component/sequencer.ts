@@ -1,4 +1,4 @@
-import { canvasCoordsToVector, vectorToCanvasCoords } from "../helpers"
+import { canvasCoordsToVector, doTwoCirclesIntersect, pickRan, ranIdx, vectorToCanvasCoords } from "../helpers"
 import simplify from "simplify-js"
 import type { Frequency } from "tone/build/esm/core/type/Units"
 
@@ -18,23 +18,34 @@ interface Observe
 	build?: CanvasRenderingContext2D
 }
 
+interface SequencerCircle extends Circle
+{
+	interval: number
+	maxInterval: number
+	radius: number
+}
+
 export class SequencerComponent implements Drawable, Sequencer, Observer<Observe>
 {
 	private rawPoints: Vector[]
 
 	private points: Vector[]
 
-	private circles: ( Vector & {active: boolean} )[]
+	private circles: SequencerCircle[]
 
 	private noteIndex: number
 
 	private building: boolean
 
-	private baseNotes: string[]
+	private baseNotes: Frequency[]
 
-	private notes: string[]
+	private highNotes: Frequency[]
 
-	constructor( public fromCapsule: string )
+	private noteLengths: string[]
+
+	private sizes: number[]
+
+	constructor( public fromCapsule: string, private type: SoundType )
 	{
 		this.rawPoints = []
 
@@ -46,9 +57,13 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 
 		this.building = false
 
-		this.notes = []
+		this.baseNotes = [ `D4`, `F4`, `A4`, `C5`, `E5` ]
 
-		this.baseNotes = [ `D4`, `F4`, `A4`, `C5`, `E5`, `` ]
+		this.highNotes = [ `D7`, `F7`, `A7`, `C7`, `E7` ]
+
+		this.noteLengths = [ `16n`, `8n`, `4n`, `2n` ]
+
+		this.sizes = [ 16, 18, 22, 30 ]
 	}
 
 	get activeCirclePosition()
@@ -74,40 +89,60 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 
 		while ( run )
 		{
-			const next = this.interpolate( p0, p1, 20 / this.lineDistance( p0, p1 ) )
+			// get length of note, to derive size of circle
+			const lengthIndex = ranIdx( this.noteLengths )
 
-			if ( this.circles[ circleIndex ] === undefined )
-			{
-				this.circles[ circleIndex ] = Object.assign(
-					{ active: false },
-					canvasCoordsToVector( ctx.canvas, next ) )
+			const radius = this.sizes[ lengthIndex ]
+
+			// Find the next point to draw the circle
+			const next = this.interpolate( p0, p1, radius / this.lineDistance( p0, p1 ) )
+
+			const ran = Math.random()
+
+			// 4% chance that if synth, then use high note
+			// 30% chance that note is silent
+			const note = this.type === `synth` && ran > 0.96
+				? pickRan( this.highNotes )
+				: ran > 0.7
+					? ``
+					: pickRan( this.baseNotes )
+
+			// create circle, increment the index
+			this.circles[ circleIndex++ ] = {
+				...canvasCoordsToVector( ctx.canvas, next ),
+				active: false,
+				length: this.noteLengths[ lengthIndex ],
+				note,
+				type: this.type,
+				interval: 0,
+				maxInterval: Math.pow( 2, lengthIndex ),
+				radius
 			}
 
-			circleIndex += 1
+			/**
+			 * Draw different sized circles until goal point is "inside" a circle,
+			 * then get the next point outside of the circle, and repeat
+			 */
 
-			if ( this.lineDistance( next, p1 ) < 60 )
+			while( doTwoCirclesIntersect( p1.left, p1.top, 1, next.left, next.top, radius ) )
 			{
 				// exit condition
-				if ( nextPointIndex === this.points.length - 1 )
+				if ( nextPointIndex++ >= this.points.length - 1 )
 				{
 					run = false
 
 					break
 				}
 
-				nextPointIndex += 1
-
 				// move to next point
 				p1 = vectorToCanvasCoords( ctx.canvas, this.points[ nextPointIndex ] )
 			}
+
+			if ( !run ) break
 			
 			// continue along line
-			p0 = this.interpolate( next, p1, 20 / this.lineDistance( next, p1 ) )
+			p0 = this.interpolate( next, p1, radius / this.lineDistance( next, p1 ) )
 		}
-
-		this.notes = Array( this.circles.length )
-			.fill( undefined )
-			.map( () => this.baseNotes[ ~~( this.baseNotes.length * Math.random() ) ] )
 	}
 
 	private drawPoints( ctx: CanvasRenderingContext2D )
@@ -150,19 +185,17 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 	 */
 	private drawCircles( ctx: CanvasRenderingContext2D )
 	{
-		if ( this.circles.length === 0 || this.notes.length === 0 ) return
-
 		ctx.strokeStyle = `#1da`
 
 		ctx.fillStyle = `#3fc`
 
-		for ( const { active, ...vector } of this.circles )
+		for ( const { active, radius, ...vector } of this.circles )
 		{
 			ctx.beginPath()
 
 			const { left, top } = vectorToCanvasCoords( ctx.canvas, vector )
 	
-			ctx.ellipse( left, top, 20, 20, 0, 0, Math.PI * 2 )
+			ctx.ellipse( left, top, radius, radius, 0, 0, Math.PI * 2 )
 	
 			ctx.closePath()
 	
@@ -195,23 +228,35 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 		}
 	}
 
-	public audio(): Frequency | undefined
+	public audio(): Circle | undefined
 	{
-		if ( this.notes.length === 0 ) return
+		if ( this.circles.length === 0 ) return
 
-		if ( this.circles[ this.noteIndex - 1 ] )
-			this.circles[ this.noteIndex - 1 ].active = false
-		else if ( this.noteIndex === 0 && this.circles[ this.circles.length - 1 ] )
-			this.circles[ this.circles.length - 1 ].active = false
+		/**
+		 * if active, check interval
+		 */
 
-		const note = this.notes[ this.noteIndex % this.notes.length ]
+		const prev = this.noteIndex === 0
+			? this.circles[ this.circles.length - 1 ]
+			: this.circles[ this.noteIndex - 1 ]
 
-		this.circles[ this.noteIndex ].active = true
+		if ( prev && prev.active )
+		{
+			prev.interval -= 1
 
-		this.noteIndex += 1
+			if ( prev.interval > 0 ) return
+			else prev.active = false
+		}
 
-		if ( this.noteIndex === this.circles.length )
-			this.noteIndex = 0
+		const note = this.circles[ this.noteIndex ]
+
+		note.active = true
+
+		note.interval = note.maxInterval
+
+		this.noteIndex = this.noteIndex + 1 === this.circles.length
+			? 0
+			: this.noteIndex + 1
 
 		return note
 	}
@@ -254,7 +299,5 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 		this.noteIndex = 0
 
 		this.building = false
-
-		this.notes = []
 	}
 }

@@ -1,5 +1,5 @@
 import bind from "bind-decorator"
-import { mountObserver } from "./helpers"
+import { mountObserver, pickRan } from "./helpers"
 import { LogSystem } from "./logSystem"
 import { loadUI } from "./UI"
 import { GameCanvas } from "./UI/gameCanvas"
@@ -141,8 +141,9 @@ class Main
 
 	private createSequencer( capsuleID: string, sequencerID: string )
 	{
+		const types: SoundType[] = [ `beat`, `synth` ]
 
-		const sequencer = new SequencerComponent( capsuleID )
+		const sequencer = new SequencerComponent( capsuleID, pickRan( types ) )
 		
 		this.entities[ sequencerID ] = sequencer
 

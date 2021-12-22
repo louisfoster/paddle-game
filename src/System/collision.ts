@@ -1,7 +1,7 @@
 import type { SequencerComponent } from "src/Component/sequencer"
 import { CapsuleComponent, CapsuleMove } from "../Component/capsule"
 import { PlayerComponent } from "../Component/player"
-import { vectorToCanvasCoords } from "../helpers"
+import { doTwoCirclesIntersect, vectorToCanvasCoords } from "../helpers"
 import type { PhysicalSystem } from "./physical"
 
 
@@ -57,16 +57,6 @@ export class CollisionSystem implements Observer<ComponentEntity>
 		this.idMap = {}
 
 		this.collisions = []
-	}
-
-	// https://www.geeksforgeeks.org/check-two-given-circles-touch-intersect/
-	private intersect( x1: number, y1: number, r1: number, x2: number, y2: number, r2: number )
-	{
-		const distSq = ( x1 - x2 ) * ( x1 - x2 ) + ( y1 - y2 ) * ( y1 - y2 )
-
-		const radSumSq = ( r1 + r2 ) * ( r1 + r2 )
-
-		return !( distSq > radSumSq )
 	}
 
 	// intersecting players
@@ -135,13 +125,14 @@ export class CollisionSystem implements Observer<ComponentEntity>
 
 				if ( !pos[ c1.id ] ) pos[ c1.id ] = _pos1
 
-				this.intersect(
+				doTwoCirclesIntersect(
 					_pos0.left,
 					_pos0.top,
 					c0.instance.radius,
 					_pos1.left,
 					_pos1.top,
-					c1.instance.radius ) && this.collisions.push( [ c0.id, c1.id ] )
+					c1.instance.radius )
+				&& this.collisions.push( [ c0.id, c1.id ] )
 			}
 		}
 
