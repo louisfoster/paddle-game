@@ -1,8 +1,8 @@
 import { LogHandler, LogLevel } from "../logHandler"
-import type { SubscriberHandler } from "../subscriberHandler"
+import { SubscriberHandler } from "../subscriberHandler"
 import { CapsuleComponent, CapsuleMove } from "../Component/capsule"
 import { PlayerComponent } from "../Component/player"
-import { listen } from "../helpers"
+import { generateID, listen } from "../helpers"
 
 interface ComponentGeneric
 {
@@ -10,25 +10,60 @@ interface ComponentGeneric
 	instance: Component
 }
 
+interface InputRead
+{
+	index: number
+	btn: number
+	pot: number
+	select?: {
+		state: PlayerSelectState
+		stateTime: number
+	}
+}
+
+enum PlayerSelectState
+{
+	init = `init`,
+	first_up = `first_up`,
+	first_down = `first_down`,
+	final_up = `final_up`,
+	confirmed = `confirmed`
+}
+
+interface PlayerInput
+{
+	id: string
+	inputIndex: number
+	move: number
+	rotation: number
+	adcRead: number
+	rotateDirection: number
+}
+
 /**
- * - listen to key input
- * - listen to web serial input
- * - listen to global input fns
+ * - single player = keyboard mode
+ * - 1 - 3 players = controller mode
  * 
- * - rotate player on rotation value
- * - set moving/acceleration of capsule / player on forward 
+ * - if controller mode,
+ * 	- start getting serial data
+ * 	- detect initial button states
+ * 	- request "hold for a moment then release"
+ * 	- all controllers than went from 0 (> 100ms) - 1 (> 100ms) - 0 (> 500ms), get activated
+ * 		- init state
+ *		- first up (0 detected, return to init if 1 < 100ms)
+ *		- first down (1 detect after > 100ms of uninterrupted 0, return to init if 0 < 100ms))
+ *		- final up (0 detect after > 100ms of uninterrupted 1, return to init if 1 < 500ms))
+ *		- confirmed (no further changes after > 500ms of 0)
+ *		- 3 sec after first confirmed, start game
+ *		- 10 sec no confirm, emit error
+ * 	- emit number of players and their associated controller index
+ * 	- begin emitting controller data for those players
  */
-export class InputSystem implements Observer<ComponentEntity>, LogObservable
+export class InputSystem implements Observer<ComponentEntity>, LogObservable, InputStateObservable, StringObservable
 {
 	private components: ComponentGeneric[]
 
 	private idMap: Record<string, number>
-
-	private rotation: number
-	
-	private rotateDirection: number
-
-	private move: number
 
 	public logObservable: SubscriberHandler<Log>
 
@@ -36,9 +71,27 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable
 
 	private port?: SerialPort
 
-	private adcRead: number
-
 	private mode?: InputMode
+
+	private state: InputState
+
+	private dataParse: {
+		parsing: boolean
+		inputs: InputRead[]
+	}
+
+	private playerInput: Record<string, PlayerInput>
+
+	private inputIndexPlayerIdMap: Record<number, string>
+
+	private timeout: {
+		tooLong: number
+		finish: number
+	}
+	
+	public inputStateObservable: SubscriberHandler<InputState>
+
+	public stringObservable: SubscriberHandler<string>
 
 	constructor()
 	{
@@ -46,17 +99,40 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable
 
 		this.logObservable = this.log.logObservable
 
+		this.inputStateObservable = new SubscriberHandler()
+
+		this.stringObservable = new SubscriberHandler()
+
+		this.state = `init`
+
+		this.dataParse = {
+			parsing: false,
+			inputs: [
+				{ index: 0, btn: 0, pot: 0 },
+				{ index: 1, btn: 0, pot: 0 },
+				{ index: 2, btn: 0, pot: 0 },
+			]
+		}
+
 		this.components = []
 
 		this.idMap = {}
 
-		this.rotation = 0.15
-		
-		this.rotateDirection = 0
+		this.inputIndexPlayerIdMap = {}
 
-		this.move = 0
+		this.playerInput = {}
 
-		this.adcRead = 0
+		this.timeout = {
+			finish: 0,
+			tooLong: 0
+		}
+	}
+
+	private setState( state: InputState )
+	{
+		this.state = state
+
+		this.inputStateObservable.next( this.state )		
 	}
 
 	private handleKeyInput()
@@ -67,13 +143,15 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable
 		{
 			const key = event.key
 
+			const player = this.playerInput[ this.inputIndexPlayerIdMap[ 0 ] ]
+
 			switch( key )
 			{
 				case `ArrowUp`:
 
 				case `w`:
 
-					this.move = this.move !== -1 ? 1 : -1
+					player.move = player.move !== -1 ? 1 : -1
 
 					break
 
@@ -81,7 +159,7 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable
 
 				case `a`:
 
-					this.rotateDirection = -1
+					player.rotateDirection = -1
 
 					break
 					
@@ -89,7 +167,7 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable
 
 				case `d`:
 
-					this.rotateDirection = 1
+					player.rotateDirection = 1
 
 					break
 			}
@@ -99,13 +177,15 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable
 		{
 			const key = event.key
 
+			const player = this.playerInput[ this.inputIndexPlayerIdMap[ 0 ] ]
+
 			switch( key )
 			{
 				case `ArrowUp`:
 
 				case `w`:
 
-					this.move = 0
+					player.move = 0
 
 					break
 
@@ -117,15 +197,19 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable
 
 				case `d`:
 
-					this.rotateDirection = 0
+					player.rotateDirection = 0
 
 					break
 			}
 		} )
+
+		this.assignPlayerToInput( 0 )
 	}
 
 	private handleControlInput()
 	{
+		if ( this.port ) return
+
 		// Permissions are required to access serial port
 		navigator.serial.requestPort()
 			.then( ( port: SerialPort ) => 
@@ -139,6 +223,8 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable
 			{
 				// The user didn't select a port.
 				this.log.log( LogLevel.warn, e )
+
+				this.setState( `error` )
 			} )
 	}
 
@@ -161,6 +247,15 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable
 			const reader = this.port.readable.getReader()
 
 			let run = true
+
+			// emit serial input ready
+
+			this.setState( `player-select` )
+
+			this.timeout.tooLong = window.setTimeout( () =>
+			{
+				this.setState( `init` )
+			}, 10000 )
 
 			try 
 			{
@@ -195,30 +290,143 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable
 			return false
 		}
 
-		const messageLength = 4
+		// currently parsing block
+		if ( this.dataParse.parsing ) return true
+
+		/**
+		 * MESSAGE STRUCTURE
+		 * 
+		 * |---- S: 1 byte ----|
+		 * [starting byte = 192]
+		 * 
+		 * 
+		 * Then, for each input: 0, 1, 2
+		 * 
+		 * |------ N.1: 1 byte -----||----------- N.2: 2 bytes ------------|
+		 * [input N btn value (0, 1)][input N potentiometer value (0, 6283)]
+		 * 
+		 *  1  1   2   1   2   1   2    = 10 bytes
+		 * |S|0.1|0.2|1.1|1.2|2.1|2.2|
+		 * 
+		 * 
+		 */
+
+
+		const messageLength = 10
 
 		if ( value && value[ 0 ] === 0xc0 && value.length >= messageLength )
 		{
-			const noiseThreshold = 100
+			this.dataParse.parsing = true
 
-			const adcVal = value[ 2 ] | value[ 1 ] << 8
-
-			const btnVal = value[ 3 ]
-
-			if ( btnVal === 1 )
+			for ( let i = 0; i < this.dataParse.inputs.length; i += 1 )
 			{
-				this.move = this.move !== -1 ? 1 : -1
-			}
-			else
-			{
-				this.move = 0
-			}
+				const offset = i * 3 + 1
 
-			if ( Math.abs( adcVal - this.adcRead ) > noiseThreshold )
-			{
-				this.adcRead = adcVal
+				const input = this.dataParse.inputs[ i ]
+	
+				input.btn = value[ offset ]
 
-				this.rotation = adcVal < 255 ? 0 : ( adcVal / 65535 )
+				if ( this.state === `player-select` )
+				{
+					// ignore adc values, only observe button
+
+					const stateTime = performance.now()
+
+					if ( !input.select )
+					{
+						input.select = {
+							state: input.btn === 0
+								? PlayerSelectState.first_up
+								: PlayerSelectState.init,
+							stateTime
+						}
+					}
+					else
+					{
+						switch( input.select.state )
+						{
+							case PlayerSelectState.init:
+
+								if ( this.dataParse.inputs[ i ].btn === 0 )
+								{
+									input.select.state = PlayerSelectState.first_up
+
+									input.select.stateTime = stateTime
+								}
+
+								break
+
+							case PlayerSelectState.first_up:
+
+								if ( this.dataParse.inputs[ i ].btn === 1 )
+								{
+									input.select.state = ( stateTime - input.select.stateTime < 100 )
+										? PlayerSelectState.init
+										: PlayerSelectState.first_down
+
+									input.select.stateTime = stateTime
+								}
+
+								break
+
+							case PlayerSelectState.first_down:
+
+								if ( this.dataParse.inputs[ i ].btn === 0 )
+								{
+									input.select.state = ( stateTime - input.select.stateTime < 100 )
+										? PlayerSelectState.init
+										: PlayerSelectState.final_up
+
+									input.select.stateTime = stateTime
+								}
+
+								break
+
+							case PlayerSelectState.final_up:
+
+								if ( input.btn === 1 )
+								{
+									input.select.state = PlayerSelectState.init
+
+									input.select.stateTime = stateTime
+								}
+								else if ( stateTime - input.select.stateTime >= 500 )
+								{
+									input.select.state = PlayerSelectState.confirmed
+
+									this.assignPlayerToInput( i )
+								}
+
+								break
+
+						}
+					}
+				}
+				else if ( this.state === `ready` && this.playerInput[ this.inputIndexPlayerIdMap[ i ] ] )
+				{
+					const player = this.playerInput[ this.inputIndexPlayerIdMap[ i ] ]
+
+					const noiseThreshold = 50	
+
+					input.pot = value[ offset + 2 ] | value[ offset + 1 ] << 8
+
+					if ( input.btn === 1 )
+					{
+						player.move = player.move !== -1 ? 1 : -1
+					}
+					else
+					{
+						player.move = 0
+					}
+		
+					if ( Math.abs( input.pot - player.rotation ) > noiseThreshold )
+					{
+						player.rotation = input.pot
+					}
+				}
+	
+	
+				this.dataParse.parsing = false
 			}
 		}
 		else
@@ -227,6 +435,34 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable
 		}
 
 		return true
+	}
+
+	private assignPlayerToInput( inputIndex: number )
+	{
+		clearTimeout( this.timeout.tooLong )
+
+		const id = generateID()
+
+		this.playerInput[ id ] = {
+			id,
+			inputIndex,
+			adcRead: 0,
+			move: 0,
+			rotateDirection: 0,
+			rotation: 0
+		}
+
+		this.inputIndexPlayerIdMap[ inputIndex ] = id
+
+		this.stringObservable.next( id )
+
+		// finish
+		clearTimeout( this.timeout.finish )
+
+		this.timeout.finish = window.setTimeout( () =>
+		{
+			this.setState( `ready` )
+		}, 3000 )
 	}
 
 	private isCapsule( component: Component ): component is CapsuleComponent
@@ -242,7 +478,11 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable
 	public update()
 	{
 		if ( this.mode === `keyboard` )
-			this.rotation = this.rotation + ( 0.02 * this.rotateDirection )
+		{
+			const player = this.playerInput[ this.inputIndexPlayerIdMap[ 0 ] ]
+
+			player.rotation = player.rotation + ( ( 10 * player.rotateDirection ) * 360 * Math.PI / 180 )
+		}
 
 		for ( const component of this.components )
 		{
@@ -252,7 +492,13 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable
 			{
 				if ( obj.occupiedBy )
 				{
-					if ( this.move )
+					const playerEntity = this.components[ this.idMap[ obj.occupiedBy ] ].instance
+
+					if ( !this.isPlayer( playerEntity ) ) return
+
+					const player = this.playerInput[ playerEntity.inputID ]
+
+					if ( player.move )
 					{
 						if ( obj.moving === CapsuleMove.pre )
 							obj.moving = CapsuleMove.active
@@ -265,11 +511,13 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable
 			}
 			else if ( this.isPlayer( obj ) )
 			{
-				obj.setRotation( this.rotation )
+				const player = this.playerInput[ obj.inputID ]
 
-				if ( !obj.inCapsule && this.move === 1 )
+				obj.setRotation( player.rotation )
+
+				if ( !obj.inCapsule && player.move === 1 )
 				{
-					this.move = -1
+					player.move = -1
 
 					obj.moveForward()
 				}

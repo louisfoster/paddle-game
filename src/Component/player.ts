@@ -4,13 +4,15 @@ export class PlayerComponent implements Drawable, Player
 {
 	private _rotation: number
 
+	private color: string
+
 	public acceleration: number
 
 	public inCapsule: string
 
 	public radius: number
 
-	constructor()
+	constructor( public inputID: string, playerCount: number )
 	{
 		// This aligns current rotation with initial draw form
 		this._rotation = 0.15
@@ -20,11 +22,13 @@ export class PlayerComponent implements Drawable, Player
 		this.inCapsule = ``
 
 		this.radius = 20
+
+		this.color = `hsl(${70 * playerCount}, 100%, 53%, 1)`
 	}
 
 	get rotation(): number
 	{
-		return this._rotation
+		return this._rotation * 0.001
 	}
 
 	/**
@@ -37,9 +41,9 @@ export class PlayerComponent implements Drawable, Player
 	{
 		const { left, top } = vectorToCanvasCoords( ctx.canvas, pos )
 
-		ctx.strokeStyle = `#15F`
+		ctx.strokeStyle = this.color
 
-		ctx.fillStyle = `#15F`
+		ctx.fillStyle = this.color
 
 		ctx.lineWidth = 2
 
@@ -67,7 +71,7 @@ export class PlayerComponent implements Drawable, Player
 
 		ctx.setTransform( 1, 0, 0, 1, left, top )
 
-		ctx.rotate( ( this.rotation * 360 - 90 ) * Math.PI / 180 )
+		ctx.rotate( this._rotation * 0.001 - ( Math.PI * 0.5 ) )
 
 		ctx.fill( path )
 
@@ -85,8 +89,6 @@ export class PlayerComponent implements Drawable, Player
 
 	/**
 	 * propel forward
-	 * 
-	 * TODO: build up energy, further launch
 	 * 
 	 * @returns 
 	 */

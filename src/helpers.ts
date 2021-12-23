@@ -140,3 +140,8 @@ export function pickRan<T>( arr: T[] ): T
 {
 	return arr[ ranIdx( arr ) ]
 }
+
+export function generateID()
+{
+	return `${~~( Math.random() * 10000 )}`
+}

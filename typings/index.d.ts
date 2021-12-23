@@ -110,6 +110,19 @@ interface UpdateLoop
 }
 
 
+/* EmitInputState */
+
+
+interface InputStateObservable
+{
+	readonly inputStateObservable: {
+		subscribe(inputStateObserver: Observer<InputState>): void
+	}
+}
+
+type InputState = `init` | `error` | `player-select` | `ready`
+
+
 interface Vector
 {
 	x: number
@@ -137,6 +150,7 @@ interface Player extends Collidable
 	rotation: number
 	acceleration: number
 	inCapsule: string
+	inputID: string
 }
 
 interface Capsule extends Collidable

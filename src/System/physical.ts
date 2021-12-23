@@ -94,12 +94,12 @@ export class PhysicalSystem implements Observer<ComponentEntity>
 			{
 				player.position.x =
 					bound( distance
-					* Math.cos( ( obj.rotation * 360 ) * Math.PI / 180 )
+					* Math.cos( obj.rotation )
 					+ player.position.x )
 	
 				player.position.y =
-					bound( ( distance * ( ctx.canvas.width / ctx.canvas.height ) ) 
-					* Math.sin(  ( obj.rotation * 360 ) * Math.PI / 180 )
+					bound( ( distance * ( ctx.canvas.width / ctx.canvas.height ) )
+					* Math.sin( obj.rotation )
 					+ player.position.y )
 			}
 		}
@@ -134,12 +134,12 @@ export class PhysicalSystem implements Observer<ComponentEntity>
 
 			capsule.position.x =
 				bound( ( 0.0001 * delta )
-				* Math.cos( ( player.instance.rotation * 360 ) * Math.PI / 180 )
+				* Math.cos( player.instance.rotation )
 				+ capsule.position.x )
 
 			capsule.position.y =
-				bound( ( ( 0.0001 * delta ) * ( ctx.canvas.width / ctx.canvas.height ) ) 
-				* Math.sin(  ( player.instance.rotation * 360 ) * Math.PI / 180 )
+				bound( ( ( 0.0001 * delta ) * ( ctx.canvas.width / ctx.canvas.height ) )
+				* Math.sin( player.instance.rotation )
 				+ capsule.position.y )
 		}
 	}

@@ -15,18 +15,41 @@
 <body>
 	<a href="https://github.com/drohen" class="drohen">
 		<img src="dude.png" />
-		<span>an experiment<br>~ by DROHEN</span>	
+		<span>an experiment<br>~ by DROHEN</span>
 	</a>
 
 	<template id="game-canvas">
 		<canvas></canvas>
 	</template>
 
+	<template id="player-loader">
+		<p>Player <span><slot></slot></span></p>
+		<figure><span></span></figure>
+		<p data-state>Waiting...</p>
+	</template>
+
 	<template id="input-select">
-		<div>
+		<div class="active" data-stage="start">
 			<p>Select your preferred input</p>
-			<button id="keyboard">Keyboard</button>
-			<button id="controller">Controller</button>
+			<button id="keyboard">Keyboard (1 player)</button>
+			<button id="controller" disabled title="Not supported by this browser">
+				Controller (1 - 3 players)
+			</button>
+		</div>
+		<div data-stage="loading">
+			<p>Loading...</p>
+		</div>
+		<div data-stage="players">
+			Hold then release your controller button to activate your player
+			<div class="player-wrap">
+				<player-loader><span>1</span></player-loader>
+				<player-loader><span>2</span></player-loader>
+				<player-loader><span>3</span></player-loader>
+			</div>
+		</div>
+		<div data-stage="error">
+			<p>An error occurred!</p>
+			<button id="restart">Restart</button>
 		</div>
 	</template>
 

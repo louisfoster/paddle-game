@@ -90,15 +90,22 @@ input-select
 	left: 50%;
 	top: 50%;
 	transform: translate(-50%, -50%);
-	background: white;
+	background: black;
 	padding: 2rem;
-	border-radius: 1rem;
+	border-radius: 0.25rem;
+	border: 1px solid hsl(186deg 100% 50%);
+	color: hsl(186deg 100% 50%);
 }
 
 :host(input-select) div
 {
-	display: grid;
+	display: none;
 	place-items: center;
+}
+
+:host(input-select) div.active
+{
+	display: grid;
 }
 
 :host(input-select) button
@@ -108,10 +115,64 @@ input-select
 	width: 100%;
 	margin-top: 1rem;
 	cursor: pointer;
+	border: 1px solid hsl(186deg 100% 50%);
+	color: hsl(186deg 100% 50%);
+	background: black;
+	padding: 0.5rem;
+	border-radius: 0.25rem;
+}
+
+:host(input-select) button:hover
+{
+	color: black;
+	background: hsl(186deg 100% 50%);
+}
+
+:host(input-select) button:disabled,
+:host(input-select) button:hover:disabled
+{
+	border: 1px solid hsl(264, 27.6%, 39%);
+	color: hsl(264, 27.6%, 39%);
+	background: black;
+	cursor: not-allowed;
 }
 
 :host(input-select) p
 {
 	font-size: 1.5rem;
 	margin: 0 0 1rem;
+}
+
+:host(input-select) .player-wrap
+{
+	display: flex;
+	justify-content: space-between;
+	width: 100%;
+	margin-top: 1rem;
+}
+
+player-loader
+{
+	border: 1px solid hsl(186deg 100% 50%);
+	padding: 0.2rem;
+}
+
+:host(player-loader) p
+{
+	margin: 0 0 0.2rem;
+}
+
+:host(player-loader) figure
+{
+	display: block;
+	margin-bottom: 0.5rem;
+}
+
+:host(player-loader) figure span
+{
+	display: inline-block;
+	width: 50px;
+	height: 50px;
+	border-radius: 50%;
+	border: 1px dashed hsl(186deg 100% 50%);
 }

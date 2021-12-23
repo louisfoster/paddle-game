@@ -1,5 +1,5 @@
 import bind from "bind-decorator"
-import { mountObserver, pickRan } from "./helpers"
+import { generateID, mountObserver, pickRan } from "./helpers"
 import { LogSystem } from "./logSystem"
 import { loadUI } from "./UI"
 import { GameCanvas } from "./UI/gameCanvas"
@@ -44,14 +44,45 @@ class Main
 
 	constructor()
 	{
-
 		this.physicalSystem = new PhysicalSystem()
 
 		this.collisionSystem = new CollisionSystem( this.physicalSystem )
 
+		this.audioSystem = new AudioSystem()
+
 		this.inputSystem = new InputSystem()
 
-		this.audioSystem = new AudioSystem()
+		this.inputSystem.stringObservable.subscribe( {
+			next: inputID =>
+			{
+				const playerCount = this.player.length + 1
+
+				this.createPlayer( inputID, playerCount )
+
+				for ( const component of this.components )
+				{
+					if ( component instanceof InputSelect )
+					{
+						component.setPlayer( playerCount )
+					}
+				}
+			}
+		} )
+
+		this.inputSystem.inputStateObservable.subscribe( {
+			next: state =>
+			{
+				if ( state === `ready` ) this.generateEntities()
+
+				for ( const component of this.components )
+				{
+					if ( component instanceof InputSelect )
+					{
+						component.next( state )
+					}
+				}
+			}
+		} )
 
 		this.components = []
 
@@ -93,8 +124,6 @@ class Main
 
 						this.components.forEach( c =>
 							c instanceof GameCanvas && c.init() )
-
-						this.generateEntities()
 					}
 				} )
 			}
@@ -108,11 +137,11 @@ class Main
 		}
 	}
 
-	private createPlayer()
+	private createPlayer( inputID: string, playerCount: number )
 	{
-		const id = this.generateID()
+		const id = generateID()
 
-		const player = new PlayerComponent()
+		const player = new PlayerComponent( inputID, playerCount )
 
 		this.entities[ id ] = player
 
@@ -123,9 +152,9 @@ class Main
 
 	private createCapsule()
 	{
-		const capsuleID = this.generateID()
+		const capsuleID = generateID()
 
-		const sequencerID = this.generateID()
+		const sequencerID = generateID()
 
 		const capsule = new CapsuleComponent( sequencerID )
 
@@ -136,7 +165,6 @@ class Main
 		this.capsule.push( [ capsuleID, capsule ] )
 
 		this.createSequencer( capsuleID, sequencerID )
-
 	}
 
 	private createSequencer( capsuleID: string, sequencerID: string )
@@ -154,8 +182,6 @@ class Main
 
 	private generateEntities()
 	{
-		this.createPlayer()
-
 		let count = 0
 
 		setTimeout( () =>
@@ -173,11 +199,6 @@ class Main
 
 			if ( count === 7 ) clearInterval( int )
 		}, 1000 )
-	}
-
-	private generateID()
-	{
-		return `${~~( Math.random() * 10000 )}`
 	}
 
 	private emitEntity( id: string, instance: Component )
