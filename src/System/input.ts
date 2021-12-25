@@ -1,7 +1,7 @@
 import { LogHandler, LogLevel } from "../logHandler"
 import { SubscriberHandler } from "../subscriberHandler"
 import { CapsuleComponent, CapsuleMove } from "../Component/capsule"
-import { PlayerComponent } from "../Component/player"
+import { PlayerComponent, PlayerState } from "../Component/player"
 import { generateID, listen } from "../helpers"
 
 interface ComponentGeneric
@@ -506,6 +506,8 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable, In
 					else if ( obj.moving === CapsuleMove.active )
 					{
 						obj.moving = CapsuleMove.end
+
+						playerEntity.state = PlayerState.ejecting
 					}
 				}
 			}

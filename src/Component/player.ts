@@ -1,5 +1,11 @@
 import { vectorToCanvasCoords } from "../helpers"
 
+export enum PlayerState
+{
+	normal = `normal`,
+	ejecting = `ejecting`,
+}
+
 export class PlayerComponent implements Drawable, Player
 {
 	private _rotation: number
@@ -11,6 +17,8 @@ export class PlayerComponent implements Drawable, Player
 	public inCapsule: string
 
 	public radius: number
+
+	public state: PlayerState
 
 	constructor( public inputID: string, playerCount: number )
 	{
@@ -24,6 +32,8 @@ export class PlayerComponent implements Drawable, Player
 		this.radius = 20
 
 		this.color = `hsl(${70 * playerCount}, 100%, 53%, 1)`
+
+		this.state = PlayerState.normal
 	}
 
 	get rotation(): number

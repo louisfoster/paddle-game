@@ -1,6 +1,6 @@
 import type { SequencerComponent } from "src/Component/sequencer"
 import { CapsuleComponent, CapsuleMove } from "../Component/capsule"
-import { PlayerComponent } from "../Component/player"
+import { PlayerComponent, PlayerState } from "../Component/player"
 import { doTwoCirclesIntersect, vectorToCanvasCoords } from "../helpers"
 import type { PhysicalSystem } from "./physical"
 
@@ -85,6 +85,31 @@ export class CollisionSystem implements Observer<ComponentEntity>
 		}
 	}
 
+	private withPlayersWithNoCollision()
+	{
+		const players: PlayerComponent[] = []
+
+		componentLoop:
+		for ( let i = 0; i < this.components.length; i += 1 )
+		{
+			const component = this.components[ i ]
+
+			if ( !this.isPlayer( component.instance ) ) continue
+
+			for ( const [ a, b ] of this.collisions )
+			{
+				if ( component.id === a || component.id === b )
+					continue componentLoop
+			}
+
+			players.push( component.instance )
+		}
+
+		return {
+			do: ( fn: ( components: PlayerComponent[] ) => void ) => players.length > 0 && fn( players )
+		}
+	}
+
 	private isCapsule( component: Component ): component is CapsuleComponent
 	{
 		return component instanceof CapsuleComponent
@@ -146,7 +171,7 @@ export class CollisionSystem implements Observer<ComponentEntity>
 				.do( ( { capsule, player, capsuleID, playerID } ) =>
 				{
 					// TODO: remove moving state condition
-					if ( player.inCapsule || capsule.occupiedBy ) return
+					if ( player.inCapsule || capsule.occupiedBy || player.state === PlayerState.ejecting ) return
 
 					// if capsule move state is pre, just occupy it
 					if ( capsule.moving === CapsuleMove.pre )
@@ -175,6 +200,17 @@ export class CollisionSystem implements Observer<ComponentEntity>
 					} 
 				} )
 		}
+
+		this.withPlayersWithNoCollision()
+			.do( players =>
+			{
+				for ( const player of players )
+				{
+					// Re-enable capability to occupy capsules
+					if ( player.state === PlayerState.ejecting )
+						player.state = PlayerState.normal
+				}
+			} )
 	}
 
 	private isCollidable( component: Component ): component is CollidableComponent

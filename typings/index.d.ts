@@ -151,6 +151,7 @@ interface Player extends Collidable
 	acceleration: number
 	inCapsule: string
 	inputID: string
+	state: `normal` | `ejecting`
 }
 
 interface Capsule extends Collidable

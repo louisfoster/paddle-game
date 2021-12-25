@@ -63,45 +63,42 @@ export class PhysicalSystem implements Observer<ComponentEntity>
 
 			if ( !this.isCapsule( capsule ) ) return
 
-			player.position.x = capsule.position.x
+			if ( capsule.instance.moving !== CapsuleMove.end )
+			{
+				player.position.x = capsule.position.x
+	
+				player.position.y = capsule.position.y
 
-			player.position.y = capsule.position.y
+				return
+			}
 
 			if ( capsule.instance.moving === CapsuleMove.end )
 			{
-				const { x, y } = randomPosition()
-
-				player.position.x = x
-
-				player.position.y = y
-
 				player.instance.inCapsule = ``
 
 				capsule.instance.occupiedBy = ``
 			}
 		}
-		else
-		{
-			const distance = obj.acceleration > 0
-				? obj.acceleration * ( delta * 0.00001 ) + 0.0001
-				: 0
 
-			obj.acceleration = obj.acceleration > 0
-				? obj.acceleration - ( delta * 0.005 )
-				: 0
+		const distance = obj.acceleration > 0
+			? obj.acceleration * ( delta * 0.00001 ) + 0.0001
+			: 0
+
+		obj.acceleration = obj.acceleration > 0
+			? obj.acceleration - ( delta * 0.005 )
+			: 0
 	
-			if ( distance )
-			{
-				player.position.x =
+		if ( distance )
+		{
+			player.position.x =
 					bound( distance
 					* Math.cos( obj.rotation )
 					+ player.position.x )
 	
-				player.position.y =
+			player.position.y =
 					bound( ( distance * ( ctx.canvas.width / ctx.canvas.height ) )
 					* Math.sin( obj.rotation )
 					+ player.position.y )
-			}
 		}
 	}
 
