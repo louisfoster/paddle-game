@@ -31,7 +31,7 @@ export class PlayerComponent implements Drawable, Player
 
 		this.radius = 20
 
-		this.color = `hsl(${70 * playerCount}, 100%, 53%, 1)`
+		this.color = `hsl(${300 - ( 150 * playerCount )}, 86%, 77%, 1)`
 
 		this.state = PlayerState.normal
 	}

@@ -60,7 +60,7 @@ export class GameCanvas extends ComponentBase implements UpdateLoopObservable
 
 		this.setWH( canvas )
 
-		ctx.fillStyle = `#000`
+		ctx.fillStyle = `hsla(238, 30%, 19%, 1)`
 
 		ctx.fillRect( 0, 0, canvas.width, canvas.height )
 

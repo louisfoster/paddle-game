@@ -61,7 +61,7 @@ export class CapsuleComponent implements Drawable, Capsule
 
 		const { left, top } = vectorToCanvasCoords( ctx.canvas, pos )
 
-		ctx.strokeStyle = `#902`
+		ctx.strokeStyle = `hsla(35, 86%, 77%, 1)`
 
 		ctx.lineWidth = 2
 

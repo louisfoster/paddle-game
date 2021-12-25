@@ -175,7 +175,7 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 			path.lineTo( left, top )
 		}
 
-		ctx.strokeStyle = `#053`
+		ctx.strokeStyle = `hsla(98, 86%, 77%, 1)`
 
 		ctx.stroke( path )
 	}
@@ -196,9 +196,9 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 	 */
 	private drawCircles( ctx: CanvasRenderingContext2D )
 	{
-		ctx.strokeStyle = `#1da`
+		ctx.strokeStyle = `hsla(220, 86%, 77%, 1)`
 
-		ctx.fillStyle = `#3fc`
+		ctx.fillStyle = `hsla(220, 86%, 77%, 1)`
 
 		for ( const { active, radius, ...vector } of this.circles )
 		{
