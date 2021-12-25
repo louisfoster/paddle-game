@@ -80,8 +80,17 @@ export class PhysicalSystem implements Observer<ComponentEntity>
 			}
 		}
 
+		// 0.001 * 2000
+		// = 2
+		// 0.001 * 500 = 0.5
+		// 2000 / 500 = 4
+		// 0.001 * 4 = 0.004
+		// 0.004 * 500 = 2
+		
+		const unit = 2000 / ctx.canvas.width
+
 		const distance = obj.acceleration > 0
-			? obj.acceleration * ( delta * 0.00001 ) + 0.0001
+			? ( obj.acceleration * ( delta * 0.00001 ) + 0.0001 ) * unit
 			: 0
 
 		obj.acceleration = obj.acceleration > 0
@@ -129,13 +138,17 @@ export class PhysicalSystem implements Observer<ComponentEntity>
 
 			if ( !this.isPlayer( player ) ) return
 
+			const unit = 2000 / ctx.canvas.width
+
+			const distance = ( 0.0001 * delta * unit )
+
 			capsule.position.x =
-				bound( ( 0.0001 * delta )
+				bound( distance
 				* Math.cos( player.instance.rotation )
 				+ capsule.position.x )
 
 			capsule.position.y =
-				bound( ( ( 0.0001 * delta ) * ( ctx.canvas.width / ctx.canvas.height ) )
+				bound( ( distance * ( ctx.canvas.width / ctx.canvas.height ) )
 				* Math.sin( player.instance.rotation )
 				+ capsule.position.y )
 		}

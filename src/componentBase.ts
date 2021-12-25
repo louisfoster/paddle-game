@@ -63,13 +63,4 @@ export class ComponentBase extends HTMLElement
 	{
 		// set in inheriting class
 	}
-
-	connectedCallback()
-	{
-		// console.log( this )
-
-		// console.log( this.getRootNode() )
-
-		// componentMount( this )
-	}
 }

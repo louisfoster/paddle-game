@@ -133,6 +133,7 @@ input-select
 	background: var(--space-cadet);
 	padding: 0.5rem;
 	border-radius: 0.25rem;
+	transition: background 300ms ease-in-out, color 300ms ease-in-out;
 }
 
 :host(input-select) button:hover
