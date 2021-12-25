@@ -1,4 +1,5 @@
-import type { SequencerComponent } from "src/Component/sequencer"
+import type { SequencerComponent } from "../Component/sequencer"
+import { WallComponent } from "../Component/wall"
 import { CapsuleComponent, CapsuleMove } from "../Component/capsule"
 import { PlayerComponent, PlayerState } from "../Component/player"
 import { doTwoCirclesIntersect, vectorToCanvasCoords } from "../helpers"
@@ -33,6 +34,12 @@ interface PlayerCapsuleIntersect
 	capsule: CapsuleComponent
 	player: PlayerComponent
 	capsuleID: string
+	playerID: string
+}
+
+interface PlayerWallIntersect
+{
+	player: PlayerComponent
 	playerID: string
 }
 
@@ -110,9 +117,32 @@ export class CollisionSystem implements Observer<ComponentEntity>
 		}
 	}
 
+	private whenPlayerWallIntersect( componentA: ComponentBase, componentB: ComponentBase )
+	{
+		let res: PlayerWallIntersect | undefined
+
+		if ( this.isWall( componentA.instance ) && this.isPlayer( componentB.instance ) )
+			res = {
+				player: componentB.instance,
+				playerID: componentB.id }
+		else if ( this.isWall( componentB.instance ) && this.isPlayer( componentA.instance ) )
+			res = {
+				player: componentA.instance,
+				playerID: componentA.id }
+		
+		return {
+			do: ( fn: ( components: PlayerWallIntersect ) => void ) => res && fn( res )
+		}
+	}
+
 	private isCapsule( component: Component ): component is CapsuleComponent
 	{
 		return component instanceof CapsuleComponent
+	}
+
+	private isWall( component: Component ): component is WallComponent
+	{
+		return component instanceof WallComponent
 	}
 
 	private isPlayer( component: Component ): component is PlayerComponent
@@ -198,6 +228,14 @@ export class CollisionSystem implements Observer<ComponentEntity>
 							seq.instance.reset()
 						}
 					} 
+				} )
+
+			this.whenPlayerWallIntersect( c0, c1 )
+				.do( ( { player } ) =>
+				{
+					player.state = PlayerState.bounce
+
+					player.moveForward()
 				} )
 		}
 

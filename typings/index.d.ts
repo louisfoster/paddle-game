@@ -140,7 +140,12 @@ interface Drawable
 	draw(ctx: CanvasRenderingContext2D, pos: Vector): void
 }
 
-interface Collidable
+interface Physical
+{
+	initialPosition: Vector
+}
+
+interface Collidable extends Physical
 {
 	radius: number
 }
@@ -151,13 +156,18 @@ interface Player extends Collidable
 	acceleration: number
 	inCapsule: string
 	inputID: string
-	state: `normal` | `ejecting`
+	state: `normal` | `ejecting` | `bounce`
 }
 
 interface Capsule extends Collidable
 {
 	moving: `pre` | `active` | `end` | `sequence`
 	occupiedBy: string
+}
+
+interface Wall extends Collidable
+{
+	
 }
 
 type SoundType = `beat` | `synth`
@@ -176,7 +186,7 @@ interface Sequencer
 	audio(): Circle | undefined
 }
 
-type Component = Player | Capsule | Sequencer
+type Component = Player | Capsule | Sequencer | Wall
 
 interface ComponentEntity
 {

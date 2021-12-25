@@ -517,7 +517,7 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable, In
 
 				obj.setRotation( player.rotation )
 
-				if ( !obj.inCapsule && player.move === 1 )
+				if ( !obj.inCapsule && obj.state !== PlayerState.bounce && player.move === 1 )
 				{
 					player.move = -1
 

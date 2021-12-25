@@ -1,5 +1,5 @@
 import bind from "bind-decorator"
-import { generateID, mountObserver, pickRan } from "./helpers"
+import { canvasCoordsToVector, generateID, mountObserver, pickRan } from "./helpers"
 import { LogSystem } from "./logSystem"
 import { loadUI } from "./UI"
 import { GameCanvas } from "./UI/gameCanvas"
@@ -12,6 +12,7 @@ import { AudioSystem } from "./System/audio"
 import { PlayerComponent } from "./Component/player"
 import { CapsuleComponent } from "./Component/capsule"
 import { SequencerComponent } from "./Component/sequencer"
+import { WallComponent } from "./Component/wall"
 
 type UIComponent = InputSelect | GameCanvas | ViewRender
 
@@ -41,6 +42,8 @@ class Main
 	private sequencer: [string, SequencerComponent][]
 
 	private entities: Record<string, Component>
+
+	private walls: [string, WallComponent][]
 
 	constructor()
 	{
@@ -91,6 +94,8 @@ class Main
 		this.sequencer = []
 
 		this.capsule = []
+
+		this.walls = []
 
 		this.entities = {}
 
@@ -212,8 +217,62 @@ class Main
 		this.audioSystem.next( { id, instance } )
 	}
 
+	private generateWalls( ctx: CanvasRenderingContext2D )
+	{
+		if ( this.walls.length > 0 ) return
+
+		const { width: w, height: h } = ctx.canvas
+
+		for ( let i = 0; i < w; )
+		{
+			const posTop = canvasCoordsToVector( ctx.canvas, { left: i, top: 0 } )	
+
+			const wallTop = new WallComponent( posTop )
+
+			this.setWall( wallTop )
+
+			const posBase = canvasCoordsToVector( ctx.canvas, { left: i, top: h } )	
+
+			const wallBase = new WallComponent( posBase )
+			
+			this.setWall( wallBase )
+
+			i += wallTop.radius * 2
+		}
+
+		for ( let i = 0; i < h; )
+		{
+			const posLeft = canvasCoordsToVector( ctx.canvas, { left: 0, top: i } )	
+
+			const wallLeft = new WallComponent( posLeft )
+
+			this.setWall( wallLeft )
+
+			const posRight = canvasCoordsToVector( ctx.canvas, { left: w, top: i } )	
+
+			const wallRight = new WallComponent( posRight )
+			
+			this.setWall( wallRight )
+
+			i += wallLeft.radius * 2
+		}
+	}
+
+	private setWall( wall: WallComponent )
+	{
+		const wallID = generateID()
+	
+		this.entities[ wallID ] = wall
+
+		this.emitEntity( wallID, wall )
+
+		this.walls.push( [ wallID, wall ] )
+	}
+
 	private update( delta: number, ctx: CanvasRenderingContext2D )
 	{
+		this.generateWalls( ctx )
+
 		this.inputSystem.update()
 
 		this.physicalSystem.update( delta, ctx )

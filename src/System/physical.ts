@@ -1,7 +1,9 @@
 import { SequencerComponent } from "../Component/sequencer"
 import { CapsuleComponent, CapsuleMove } from "../Component/capsule"
-import { PlayerComponent } from "../Component/player"
-import { bound, randomPosition } from "../helpers"
+import { PlayerComponent, PlayerState } from "../Component/player"
+import { angleBetweenPoints, bound } from "../helpers"
+
+type PhysicalComponent = Physical & Component
 
 interface ComponentTyped<T>
 {
@@ -87,17 +89,26 @@ export class PhysicalSystem implements Observer<ComponentEntity>
 		obj.acceleration = obj.acceleration > 0
 			? obj.acceleration - ( delta * 0.005 )
 			: 0
+
+		if ( obj.acceleration === 0 && player.instance.state === PlayerState.bounce )
+		{
+			player.instance.state = PlayerState.normal
+		}
 	
 		if ( distance )
 		{
+			const rot = player.instance.state === PlayerState.bounce
+				? angleBetweenPoints( player.position.x, player.position.y, 0.5, 0.5 )
+				: obj.rotation
+
 			player.position.x =
 					bound( distance
-					* Math.cos( obj.rotation )
+					* Math.cos( rot )
 					+ player.position.x )
 	
 			player.position.y =
 					bound( ( distance * ( ctx.canvas.width / ctx.canvas.height ) )
-					* Math.sin( obj.rotation )
+					* Math.sin( rot )
 					+ player.position.y )
 		}
 	}
@@ -187,6 +198,22 @@ export class PhysicalSystem implements Observer<ComponentEntity>
 
 
 
+	/**
+	 * 
+	 * 
+	 * HELPERS
+	 * 
+	 * 
+	 * 
+	 */
+
+	private isPhysical( component: Component ): component is PhysicalComponent
+	{
+		return `initialPosition` in component
+	}
+
+
+
 
 	/**
 	 * 
@@ -220,12 +247,14 @@ export class PhysicalSystem implements Observer<ComponentEntity>
 
 	next( component: ComponentEntity )
 	{
+		if ( !this.isPhysical( component.instance ) ) return
+
 		this.idMap[ component.id ] = this.components.length 
 
 		this.components.push( {
 			id: component.id,
 			instance: component.instance,
-			position: randomPosition()
+			position: component.instance.initialPosition
 		} )
 	}
 

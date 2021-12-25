@@ -1,9 +1,10 @@
-import { vectorToCanvasCoords } from "../helpers"
+import { randomPosition, vectorToCanvasCoords } from "../helpers"
 
 export enum PlayerState
 {
 	normal = `normal`,
 	ejecting = `ejecting`,
+	bounce = `bounce`
 }
 
 export class PlayerComponent implements Drawable, Player
@@ -34,6 +35,11 @@ export class PlayerComponent implements Drawable, Player
 		this.color = `hsl(${70 * playerCount}, 100%, 53%, 1)`
 
 		this.state = PlayerState.normal
+	}
+
+	get initialPosition(): Vector
+	{
+		return randomPosition()
 	}
 
 	get rotation(): number

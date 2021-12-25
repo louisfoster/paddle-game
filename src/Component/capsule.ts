@@ -1,5 +1,5 @@
 
-import { vectorToCanvasCoords } from "../helpers"
+import { randomPosition, vectorToCanvasCoords } from "../helpers"
 
 /**
  * - render capsule at a given position
@@ -32,6 +32,11 @@ export class CapsuleComponent implements Drawable, Capsule
 		this._moving = CapsuleMove.pre
 		
 		this.occupiedBy = ``
+	}
+
+	get initialPosition(): Vector
+	{
+		return randomPosition()
 	}
 
 	set moving( value: CapsuleMove )
