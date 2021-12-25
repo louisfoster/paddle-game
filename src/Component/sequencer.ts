@@ -89,21 +89,32 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 
 		while ( run )
 		{
+			const ran = Math.random()
+
+			const type = this.type === `synth` && ran > 0.96
+				? `high`
+				: ran > 0.8
+					? `silent`
+					: `normal`
+
 			// get length of note, to derive size of circle
-			const lengthIndex = ranIdx( this.noteLengths )
+			const lengthIndex = type === `high`
+				? 0
+				: ranIdx( this.noteLengths )
 
 			const radius = this.sizes[ lengthIndex ]
 
 			// Find the next point to draw the circle
 			const next = this.interpolate( p0, p1, radius / this.lineDistance( p0, p1 ) )
 
-			const ran = Math.random()
 
 			// 4% chance that if synth, then use high note
-			// 30% chance that note is silent
-			const note = this.type === `synth` && ran > 0.96
+			// 20% chance that note is silent
+
+
+			const note = type === `high`
 				? pickRan( this.highNotes )
-				: ran > 0.7
+				: type === `silent`
 					? ``
 					: pickRan( this.baseNotes )
 
