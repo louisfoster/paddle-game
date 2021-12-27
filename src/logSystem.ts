@@ -13,8 +13,6 @@ export class LogSystem implements Observer<Log>
 		}
 	}
 
-	// TODO: handle errors in dev / prod modes
-
 	@bind
 	private error( message: string )
 	{

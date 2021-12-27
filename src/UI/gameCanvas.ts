@@ -1,6 +1,6 @@
 import { ComponentBase } from "../componentBase"
 import { define } from "web-component-decorator"
-import { el, using } from "../helpers"
+import { colors, el, using } from "../helpers"
 import { SubscriberHandler } from "../subscriberHandler"
 
 
@@ -60,7 +60,7 @@ export class GameCanvas extends ComponentBase implements UpdateLoopObservable
 
 		this.setWH( canvas )
 
-		ctx.fillStyle = `hsla(238, 30%, 19%, 1)`
+		ctx.fillStyle = colors[ `space-cadet` ]
 
 		ctx.fillRect( 0, 0, canvas.width, canvas.height )
 

@@ -18,14 +18,6 @@ interface ComponentGeneric
 }
 
 
-/**
- * on user forward input
- * - if player, and player isn't in capsule, and player has acceleration, move player with momentum
- * - if capsule, and capsule has player, get player rotation, move capsule + player forward
- * 
- * on user rotate input
- * - rotate player
- */
 export class PhysicalSystem implements Observer<ComponentEntity>
 {
 	private components: ComponentGeneric[]
@@ -53,6 +45,15 @@ export class PhysicalSystem implements Observer<ComponentEntity>
 		return component.instance instanceof PlayerComponent
 	}
 
+
+	/**
+	 * on user forward input
+	 * - if player, and player isn't in capsule, and player has acceleration, move player with momentum
+	 * - if capsule, and capsule has player, get player rotation, move capsule + player forward
+	 * 
+	 * on user rotate input
+	 * - rotate player
+	 */
 	private updatePlayer( delta: number, ctx: CanvasRenderingContext2D, player: ComponentTyped<PlayerComponent> )
 	{
 		const { instance: obj } = player
@@ -79,16 +80,13 @@ export class PhysicalSystem implements Observer<ComponentEntity>
 				capsule.instance.occupiedBy = ``
 			}
 		}
-
-		// 0.001 * 2000
-		// = 2
-		// 0.001 * 500 = 0.5
-		// 2000 / 500 = 4
-		// 0.001 * 4 = 0.004
-		// 0.004 * 500 = 2
 		
+		// arbitrary value, based on my screen resolution when
+		// moving at an ideal velocity
 		const unit = 2000 / ctx.canvas.width
 
+		// acceleration * time * velocity displacement
+		// (unit product is used for screen size consistency)
 		const distance = obj.acceleration > 0
 			? ( obj.acceleration * ( delta * 0.00001 ) + 0.0001 ) * unit
 			: 0
@@ -99,6 +97,7 @@ export class PhysicalSystem implements Observer<ComponentEntity>
 	
 		if ( distance )
 		{
+			// calculate the new position using player's rotation
 			player.position.x =
 					bound( distance
 					* Math.cos( obj.rotation )
@@ -132,6 +131,7 @@ export class PhysicalSystem implements Observer<ComponentEntity>
 	{
 		const { instance: obj } = capsule
 
+		// capsule only moves with a player occupying it
 		if ( obj.moving === CapsuleMove.active && obj.occupiedBy )
 		{
 			const player = this.components[ this.idMap[ obj.occupiedBy ] ]
@@ -142,6 +142,8 @@ export class PhysicalSystem implements Observer<ComponentEntity>
 
 			const distance = ( 0.0001 * delta * unit )
 
+			// capsule will move the player
+			// capsule has no momentum, just displacement
 			capsule.position.x =
 				bound( distance
 				* Math.cos( player.instance.rotation )
@@ -177,6 +179,7 @@ export class PhysicalSystem implements Observer<ComponentEntity>
 
 		const capsule = this.components[ this.idMap[ obj.fromCapsule ] ]
 
+		// sequence makes capsule move to the circle corresponding to the current note in the sequence
 		if ( this.isCapsule( capsule ) )
 		{
 			if ( capsule.instance.moving === CapsuleMove.active )

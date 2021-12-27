@@ -133,6 +133,10 @@ The circuits were designed using [Wokwi](https://wokwi.com/) and [CircuitJS](htt
 - For the demo, the controllers' case is a repurposed gum container. These are a nice size for a hand, although they present difficulties when actually mounting the components inside. It might involve melting plastic or handling sharp tools, so I don't recommend this approach.
 - To connect the controllers to the Pico header interface, I used audio jacks and audio cables. I'm not certain on any danger of short-circuiting and potentional damage this could do to the Pico, but I'm fairly certain there isn't a risk here.
 
+### Audio
+
+[ToneJS](https://tonejs.github.io/) synthesizers are used to generate the sound. The scale is taken directly from some example code, and corresponds to notes in the C major scale. One synthesizer generates sounds that corresponds to a melody, and the other is more like a drum. The notes are somewhat random, as is timing. The bpm is 120, with the sequencer triggering on 16ths. This creates a kind of relaxing, whimsical sound. Sometimes it sounds great, other times it can get fair chaotic, often it can be kind of annoying. I think the search for an engaging sound is part of what makes the app fun to use. However, I also think the engine could be more efficient as to not pop so much, and to bring in more control over the sound along with variety.
+
 
 ## Author
 

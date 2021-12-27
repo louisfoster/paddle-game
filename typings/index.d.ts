@@ -4,6 +4,8 @@ interface Observer<T>
 	completed?: () => void
 }
 
+
+
 /* LOGGING */
 
 interface LogObservable
@@ -35,6 +37,8 @@ interface AppViewObservable
 type AppView = `home`
 
 
+
+
 /* STRING */
 
 interface StringObservable
@@ -45,8 +49,9 @@ interface StringObservable
 }
 
 
-/* MODE */
 
+
+/* MODE */
 
 interface ModeObservable
 {
@@ -62,6 +67,8 @@ interface Mode
 }
 
 
+
+
 /* EMIT */
 
 interface EmitObservable
@@ -72,12 +79,6 @@ interface EmitObservable
 }
 
 
-/* EventExtended */
-
-interface EventExtended extends GlobalEventHandlersEventMap
-{
-	//
-}
 
 
 /* InputMode */
@@ -93,8 +94,9 @@ interface InputModeObservable
 type InputMode = `keyboard` | `controller`
 
 
-/* UpdateLoop */
 
+
+/* UpdateLoop */
 
 interface UpdateLoopObservable
 {
@@ -110,8 +112,9 @@ interface UpdateLoop
 }
 
 
-/* EmitInputState */
 
+
+/* EmitInputState */
 
 interface InputStateObservable
 {
@@ -122,6 +125,17 @@ interface InputStateObservable
 
 type InputState = `init` | `error` | `player-select` | `ready`
 
+
+
+/* EventExtended */
+
+interface EventExtended extends GlobalEventHandlersEventMap
+{
+	//
+}
+
+
+/* Data types */
 
 interface Vector
 {

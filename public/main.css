@@ -33,6 +33,11 @@ main
 	height: 100%;
 }
 
+
+
+/*
+VANITY
+*/
 .drohen
 {
 	display: flex;
@@ -164,6 +169,13 @@ input-select
 	width: 100%;
 	margin-top: 1rem;
 }
+
+
+
+
+/*
+PLAYER LOADER
+*/
 
 player-loader
 {

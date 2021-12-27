@@ -1,4 +1,4 @@
-import { canvasCoordsToVector, doTwoCirclesIntersect, pickRan, ranIdx, vectorToCanvasCoords } from "../helpers"
+import { canvasCoordsToVector, colors, doTwoCirclesIntersect, interpolate, lineDistance, pickRan, ranIdx, vectorToCanvasCoords } from "../helpers"
 import simplify from "simplify-js"
 import type { Frequency } from "tone/build/esm/core/type/Units"
 
@@ -105,7 +105,7 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 			const radius = this.sizes[ lengthIndex ]
 
 			// Find the next point to draw the circle
-			const next = this.interpolate( p0, p1, radius / this.lineDistance( p0, p1 ) )
+			const next = interpolate( p0, p1, radius / lineDistance( p0, p1 ) )
 
 
 			// 4% chance that if synth, then use high note
@@ -152,7 +152,7 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 			if ( !run ) break
 			
 			// continue along line
-			p0 = this.interpolate( next, p1, radius / this.lineDistance( next, p1 ) )
+			p0 = interpolate( next, p1, radius / lineDistance( next, p1 ) )
 		}
 	}
 
@@ -175,7 +175,7 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 			path.lineTo( left, top )
 		}
 
-		ctx.strokeStyle = `hsla(98, 86%, 77%, 1)`
+		ctx.strokeStyle = colors[ `mint-green` ]
 
 		ctx.stroke( path )
 	}
@@ -196,9 +196,9 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 	 */
 	private drawCircles( ctx: CanvasRenderingContext2D )
 	{
-		ctx.strokeStyle = `hsla(220, 86%, 77%, 1)`
+		ctx.strokeStyle = colors[ `french-sky-blue` ]
 
-		ctx.fillStyle = `hsla(220, 86%, 77%, 1)`
+		ctx.fillStyle = colors[ `french-sky-blue` ]
 
 		for ( const { active, radius, ...vector } of this.circles )
 		{
@@ -221,24 +221,6 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 		}
 	}
 
-	// https://stackoverflow.com/questions/26540823/find-the-length-of-line-in-canvas
-	private lineDistance( point1: CanvasCoords, point2: CanvasCoords )
-	{
-		return Math.sqrt(
-			Math.pow( point2.left - point1.left, 2 ) 
-			+ Math.pow( point2.top - point1.top, 2 ) )
-	}
-
-	// points A and B, frac between 0 and 1
-	// https://stackoverflow.com/questions/17190981/how-can-i-interpolate-between-2-points-when-drawing-with-canvas/17191557
-	private interpolate( a: CanvasCoords, b: CanvasCoords, frac: number ): CanvasCoords
-	{
-		return {
-			left: a.left + ( b.left - a.left  ) * frac,
-			top: a.top + ( b.top - a.top ) * frac
-		}
-	}
-
 	public audio(): Circle | undefined
 	{
 		if ( this.circles.length === 0 ) return
@@ -255,6 +237,8 @@ export class SequencerComponent implements Drawable, Sequencer, Observer<Observe
 		{
 			prev.interval -= 1
 
+			// if a longer note is currently playing
+			// don't return a value
 			if ( prev.interval > 0 ) return
 			else prev.active = false
 		}

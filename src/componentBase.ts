@@ -1,6 +1,9 @@
 import bind from "bind-decorator"
 import { componentMount, el } from "./helpers"
 
+/**
+ * Helper class to build web components
+ */
 export class ComponentBase extends HTMLElement
 {
 	private stylesheets: string[]

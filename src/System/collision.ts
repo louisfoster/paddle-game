@@ -1,4 +1,4 @@
-import type { SequencerComponent } from "src/Component/sequencer"
+import type { SequencerComponent } from "../Component/sequencer"
 import { CapsuleComponent, CapsuleMove } from "../Component/capsule"
 import { PlayerComponent, PlayerState } from "../Component/player"
 import { doTwoCirclesIntersect, vectorToCanvasCoords } from "../helpers"
@@ -59,10 +59,12 @@ export class CollisionSystem implements Observer<ComponentEntity>
 		this.collisions = []
 	}
 
-	// intersecting players
-	// intersecting capsules
-	// intersecting player + capsule
-
+	/**
+	 * Compare and emit components when one is a player, and the other is a capsule
+	 * @param componentA 
+	 * @param componentB 
+	 * @returns 
+	 */
 	private whenPlayerCapsuleIntersect( componentA: ComponentBase, componentB: ComponentBase )
 	{
 		let res: PlayerCapsuleIntersect | undefined
@@ -85,6 +87,10 @@ export class CollisionSystem implements Observer<ComponentEntity>
 		}
 	}
 
+	/**
+	 * Emit players that aren't colliding
+	 * @returns 
+	 */
 	private withPlayersWithNoCollision()
 	{
 		const players: PlayerComponent[] = []
@@ -170,7 +176,6 @@ export class CollisionSystem implements Observer<ComponentEntity>
 			this.whenPlayerCapsuleIntersect( c0, c1 )
 				.do( ( { capsule, player, capsuleID, playerID } ) =>
 				{
-					// TODO: remove moving state condition
 					if ( player.inCapsule || capsule.occupiedBy || player.state === PlayerState.ejecting ) return
 
 					// if capsule move state is pre, just occupy it

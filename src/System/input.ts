@@ -21,6 +21,14 @@ interface InputRead
 	}
 }
 
+interface InputReadSelect extends InputRead
+{
+	select: {
+		state: PlayerSelectState
+		stateTime: number
+	}
+}
+
 enum PlayerSelectState
 {
 	init = `init`,
@@ -40,25 +48,6 @@ interface PlayerInput
 	rotateDirection: number
 }
 
-/**
- * - single player = keyboard mode
- * - 1 - 3 players = controller mode
- * 
- * - if controller mode,
- * 	- start getting serial data
- * 	- detect initial button states
- * 	- request "hold for a moment then release"
- * 	- all controllers than went from 0 (> 100ms) - 1 (> 100ms) - 0 (> 500ms), get activated
- * 		- init state
- *		- first up (0 detected, return to init if 1 < 100ms)
- *		- first down (1 detect after > 100ms of uninterrupted 0, return to init if 0 < 100ms))
- *		- final up (0 detect after > 100ms of uninterrupted 1, return to init if 1 < 500ms))
- *		- confirmed (no further changes after > 500ms of 0)
- *		- 3 sec after first confirmed, start game
- *		- 10 sec no confirm, emit error
- * 	- emit number of players and their associated controller index
- * 	- begin emitting controller data for those players
- */
 export class InputSystem implements Observer<ComponentEntity>, LogObservable, InputStateObservable, StringObservable
 {
 	private components: ComponentGeneric[]
@@ -88,6 +77,12 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable, In
 		tooLong: number
 		finish: number
 	}
+
+	private activatePlayerStates: Record<PlayerSelectState, ( input: InputReadSelect, stateTime: number ) => boolean>
+
+	private onKeyDown: Record<string, ( player: PlayerInput ) => void>
+
+	private onKeyUp: Record<string, ( player: PlayerInput ) => void>
 	
 	public inputStateObservable: SubscriberHandler<InputState>
 
@@ -105,6 +100,9 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable, In
 
 		this.state = `init`
 
+		/**
+		 * Storage for received serial data
+		 */
 		this.dataParse = {
 			parsing: false,
 			inputs: [
@@ -126,83 +124,154 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable, In
 			finish: 0,
 			tooLong: 0
 		}
+
+		/**
+		 * These steps outline the states a button goes through over time
+		 * to ensure a player is active, and connected.
+		 */
+		this.activatePlayerStates = {
+			[ PlayerSelectState.init ]: ( input, stateTime ) =>
+			{
+				// First, the button should be in an unpressed state
+				// (disconnected controllers are always in pressed state)
+				if ( input.btn === 0 )
+				{
+					input.select.state = PlayerSelectState.first_up
+
+					input.select.stateTime = stateTime
+				}
+
+				return false
+			},
+			[ PlayerSelectState.first_up ]: ( input, stateTime ) =>
+			{
+				// The player then presses the button, no less than 100ms from
+				// stating in the 0 state (to avoid momentary switches between 0 and 1 from the ADC)
+				if ( input.btn === 1 )
+				{
+					input.select.state = ( stateTime - input.select.stateTime < 100 )
+						? PlayerSelectState.init
+						: PlayerSelectState.first_down
+
+					input.select.stateTime = stateTime
+				}
+
+				return false
+			},
+			[ PlayerSelectState.first_down ]: ( input, stateTime ) =>
+			{
+				// The player then releases the button no less than 100ms later
+				if ( input.btn === 0 )
+				{
+					input.select.state = ( stateTime - input.select.stateTime < 100 )
+						? PlayerSelectState.init
+						: PlayerSelectState.final_up
+
+					input.select.stateTime = stateTime
+				}
+
+				return false
+			},
+			[ PlayerSelectState.final_up ]: ( input, stateTime ) =>
+			{
+				// As long as the button is still unpressed after half a second
+				// it then is confirmed, and returns true to trigger
+				// adding the input and creating the player
+				if ( input.btn === 1 )
+				{
+					input.select.state = PlayerSelectState.init
+
+					input.select.stateTime = stateTime
+				}
+				else if ( stateTime - input.select.stateTime >= 500 )
+				{
+					input.select.state = PlayerSelectState.confirmed
+
+					return true
+				}
+
+				return false
+			},
+			[ PlayerSelectState.confirmed ]: () => false
+		}
+
+		this.onKeyDown = {
+			ArrowUp: player =>
+			{
+				player.move = player.move !== -1 ? 1 : -1
+			},
+			w: player =>
+			{
+				player.move = player.move !== -1 ? 1 : -1
+			},
+			ArrowLeft: player =>
+			{
+				player.rotateDirection = -1
+			},
+			a: player =>
+			{
+				player.rotateDirection = -1
+			},
+
+			ArrowRight: player =>
+			{
+				player.rotateDirection = 1
+			},
+			d: player =>
+			{
+				player.rotateDirection = 1
+			},
+		}
+
+		this.onKeyUp = {
+			ArrowUp: player =>
+			{
+				player.move = 0
+			},
+			w: player =>
+			{
+				player.move = 0
+			},
+			ArrowLeft: player =>
+			{
+				player.rotateDirection = 0
+			},
+			a: player =>
+			{
+				player.rotateDirection = 0
+			},
+			ArrowRight: player =>
+			{
+				player.rotateDirection = 0
+			},
+			d: player =>
+			{
+				player.rotateDirection = 0
+			},
+		}
 	}
 
 	private setState( state: InputState )
 	{
 		this.state = state
 
-		this.inputStateObservable.next( this.state )		
+		this.inputStateObservable.next( this.state )
 	}
 
+	/**
+	 * If using keyboard, listen for keydown/up events
+	 */
 	private handleKeyInput()
 	{
 		const ev = listen( document )
 
 		ev.on( `keydown` ).do( ( event ) =>
-		{
-			const key = event.key
-
-			const player = this.playerInput[ this.inputIndexPlayerIdMap[ 0 ] ]
-
-			switch( key )
-			{
-				case `ArrowUp`:
-
-				case `w`:
-
-					player.move = player.move !== -1 ? 1 : -1
-
-					break
-
-				case `ArrowLeft`:
-
-				case `a`:
-
-					player.rotateDirection = -1
-
-					break
-					
-				case `ArrowRight`:
-
-				case `d`:
-
-					player.rotateDirection = 1
-
-					break
-			}
-		} )
+			this.onKeyDown[ event.key ]?.( this.playerInput[ this.inputIndexPlayerIdMap[ 0 ] ] ) )
 
 		ev.on( `keyup` ).do( ( event ) =>
-		{
-			const key = event.key
+			this.onKeyUp[ event.key ]?.( this.playerInput[ this.inputIndexPlayerIdMap[ 0 ] ] ) )
 
-			const player = this.playerInput[ this.inputIndexPlayerIdMap[ 0 ] ]
-
-			switch( key )
-			{
-				case `ArrowUp`:
-
-				case `w`:
-
-					player.move = 0
-
-					break
-
-				case `ArrowLeft`:
-
-				case `a`:
-					
-				case `ArrowRight`:
-
-				case `d`:
-
-					player.rotateDirection = 0
-
-					break
-			}
-		} )
-
+		// only 1 player available in this mode
 		this.assignPlayerToInput( 0 )
 	}
 
@@ -259,6 +328,8 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable, In
 
 			try 
 			{
+				// loop occurs asynchronously, that's why it doesn't block
+				// not sure if this could be done better though
 				while ( run ) 
 				{
 					// Exit if serial reading returns false (done)
@@ -314,6 +385,7 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable, In
 
 		const messageLength = 10
 
+		// check for starting byte and correct message length
 		if ( value && value[ 0 ] === 0xc0 && value.length >= messageLength )
 		{
 			this.dataParse.parsing = true
@@ -326,13 +398,14 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable, In
 	
 				input.btn = value[ offset ]
 
+				// view is activating players
 				if ( this.state === `player-select` )
 				{
 					// ignore adc values, only observe button
 
 					const stateTime = performance.now()
 
-					if ( !input.select )
+					if ( !this.isInputSelect( input ) )
 					{
 						input.select = {
 							state: input.btn === 0
@@ -341,90 +414,30 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable, In
 							stateTime
 						}
 					}
-					else
+					else if ( this.activatePlayerStates[ input.select.state ]( input, stateTime ) )
 					{
-						switch( input.select.state )
-						{
-							case PlayerSelectState.init:
-
-								if ( this.dataParse.inputs[ i ].btn === 0 )
-								{
-									input.select.state = PlayerSelectState.first_up
-
-									input.select.stateTime = stateTime
-								}
-
-								break
-
-							case PlayerSelectState.first_up:
-
-								if ( this.dataParse.inputs[ i ].btn === 1 )
-								{
-									input.select.state = ( stateTime - input.select.stateTime < 100 )
-										? PlayerSelectState.init
-										: PlayerSelectState.first_down
-
-									input.select.stateTime = stateTime
-								}
-
-								break
-
-							case PlayerSelectState.first_down:
-
-								if ( this.dataParse.inputs[ i ].btn === 0 )
-								{
-									input.select.state = ( stateTime - input.select.stateTime < 100 )
-										? PlayerSelectState.init
-										: PlayerSelectState.final_up
-
-									input.select.stateTime = stateTime
-								}
-
-								break
-
-							case PlayerSelectState.final_up:
-
-								if ( input.btn === 1 )
-								{
-									input.select.state = PlayerSelectState.init
-
-									input.select.stateTime = stateTime
-								}
-								else if ( stateTime - input.select.stateTime >= 500 )
-								{
-									input.select.state = PlayerSelectState.confirmed
-
-									this.assignPlayerToInput( i )
-								}
-
-								break
-
-						}
+						this.assignPlayerToInput( i )
 					}
 				}
+				// view is in play mode
 				else if ( this.state === `ready` && this.playerInput[ this.inputIndexPlayerIdMap[ i ] ] )
 				{
 					const player = this.playerInput[ this.inputIndexPlayerIdMap[ i ] ]
 
+					// noise threshold prevent "wobbling"
 					const noiseThreshold = 50	
 
 					input.pot = value[ offset + 2 ] | value[ offset + 1 ] << 8
 
-					if ( input.btn === 1 )
-					{
-						player.move = player.move !== -1 ? 1 : -1
-					}
-					else
-					{
-						player.move = 0
-					}
+					player.move = input.btn === 1
+						? player.move !== -1 ? 1 : -1
+						: 0
 		
 					if ( Math.abs( input.pot - player.rotation ) > noiseThreshold )
 					{
 						player.rotation = input.pot
 					}
 				}
-	
 	
 				this.dataParse.parsing = false
 			}
@@ -435,6 +448,11 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable, In
 		}
 
 		return true
+	}
+
+	private isInputSelect( input: InputRead ): input is InputReadSelect
+	{
+		return `select` in input
 	}
 
 	private assignPlayerToInput( inputIndex: number )
@@ -459,6 +477,7 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable, In
 		// finish
 		clearTimeout( this.timeout.finish )
 
+		// wait for other players to activate
 		this.timeout.finish = window.setTimeout( () =>
 		{
 			this.setState( `ready` )
@@ -490,6 +509,7 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable, In
 
 			if ( this.isCapsule( obj ) )
 			{
+				// move capsule only when its occupied
 				if ( obj.occupiedBy )
 				{
 					const playerEntity = this.components[ this.idMap[ obj.occupiedBy ] ].instance
@@ -503,6 +523,7 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable, In
 						if ( obj.moving === CapsuleMove.pre )
 							obj.moving = CapsuleMove.active
 					}
+					// if the player has stopped moving, eject it
 					else if ( obj.moving === CapsuleMove.active )
 					{
 						obj.moving = CapsuleMove.end
@@ -519,6 +540,7 @@ export class InputSystem implements Observer<ComponentEntity>, LogObservable, In
 
 				if ( !obj.inCapsule && player.move === 1 )
 				{
+					// player needs to press again to continue acceleration
 					player.move = -1
 
 					obj.moveForward()

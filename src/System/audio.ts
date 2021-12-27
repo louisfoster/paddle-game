@@ -22,10 +22,12 @@ export class AudioSystem implements Observer<ComponentEntity>
 
 	public init()
 	{
+		// melody synth
 		const synth = new PolySynth( Synth, { volume: -8, detune: -1200 } ).toDestination()
 
 		synth.maxPolyphony = 100
 
+		// rhythm synth
 		const beat = new PolySynth( MembraneSynth, { volume: -12, detune: -3600 } ).toDestination()
 
 		beat.maxPolyphony = 100
@@ -34,6 +36,10 @@ export class AudioSystem implements Observer<ComponentEntity>
 
 		const loop = new Loop( time =>
 		{
+			/**
+			 * each note length is triggered separately,
+			 * as an array of notes to be played for that time frame. 
+			 */
 			const notes: {synth: Record<string, Frequency[]>; beat: Record<string, Frequency[]>} = {
 				synth: {
 					[ times[ 0 ] ]: [],
@@ -95,8 +101,6 @@ export class AudioSystem implements Observer<ComponentEntity>
 					beat.triggerAttackRelease( notes.beat[ len ], len, time + 0.05 )
 			}
 		}, `16n` )
-
-		console.log( `init audio loop` )
 
 		loop.start( 0 )
 
