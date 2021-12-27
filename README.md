@@ -99,16 +99,16 @@ The circuits were designed using [Wokwi](https://wokwi.com/) and [CircuitJS](htt
 
 ### Color palette
 
---light-coral: hsla(0, 86%, 77%, 1);
---aquamarine: hsla(150, 86%, 77%, 1);
---violet-web: hsla(300, 86%, 77%, 1);
---space-cadet: hsla(238, 30%, 19%, 1);
---mint-green: hsla(98, 86%, 77%, 1);
---deep-champagne: hsla(35, 86%, 77%, 1);
---french-sky-blue: hsla(220, 86%, 77%, 1);
---light-green: hsla(127, 86%, 77%, 1);
+- --light-coral: hsla(0, 86%, 77%, 1);
+- --aquamarine: hsla(150, 86%, 77%, 1);
+- --violet-web: hsla(300, 86%, 77%, 1);
+- --space-cadet: hsla(238, 30%, 19%, 1);
+- --mint-green: hsla(98, 86%, 77%, 1);
+- --deep-champagne: hsla(35, 86%, 77%, 1);
+- --french-sky-blue: hsla(220, 86%, 77%, 1);
+- --light-green: hsla(127, 86%, 77%, 1);
 
-Created here: https://coolors.co/f79292-92f7c4-f792f7-22233f-b7f792-f7cd92-92b4f7-92f79e
+[Created with Coolors](https://coolors.co/f79292-92f7c4-f792f7-22233f-b7f792-f7cd92-92b4f7-92f79e).
 
 ### Controllers
 
