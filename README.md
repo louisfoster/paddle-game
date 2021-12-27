@@ -8,6 +8,24 @@ Music toy used with a custom paddle-style controller that communicates via web s
 
 ![Demonstration of paddle-game project](images/demo.gif "Demonstration of paddle-game project")
 
+## Contents
+
+* [What is does](#what-is-does)
+* [Controls](#controls)
+	+ [With Controller](#with-controller)
+	+ [With Keyboard](#with-keyboard)
+* [Try it out and build it yourself](#try-it-out-and-build-it-yourself)
+	+ [Pico](#pico)
+	+ [Web Application](#web-application)
+* [What is the purpose of this project?](#what-is-the-purpose-of-this-project-)
+* [Project inspirations](#project-inspirations)
+* [Project design](#project-design)
+	+ [Code](#code)
+	+ [Circuits](#circuits)
+	+ [Color palette](#color-palette)
+	+ [Controllers](#controllers)
+* [Author](#author)
+
 ## What is does
 
 A Raspberry Pi Pico listens on [all 3](https://datasheets.raspberrypi.com/pico/Pico-R3-A4-Pinout.pdf) of its [ADC](https://en.wikipedia.org/wiki/Analog-to-digital_converter) pins. A voltage divider constructed from 2 resitors, a potentiometer, and a button, and this is connected to one of the ADC pins, such that 3 separate circuits can be used individually as controllers.
