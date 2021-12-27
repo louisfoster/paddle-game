@@ -5,6 +5,9 @@ Music toy used with a custom paddle-style controller that communicates via web s
 
 ## [Live Demo](https://drohen.github.io/paddle-game/) ((d[-_-]b))
 
+
+![Demonstration of paddle-game project](images/demo.gif "Demonstration of paddle-game project")
+
 ## What is does
 
 A Raspberry Pi Pico listens on [all 3](https://datasheets.raspberrypi.com/pico/Pico-R3-A4-Pinout.pdf) of its [ADC](https://en.wikipedia.org/wiki/Analog-to-digital_converter) pins. A voltage divider constructed from 2 resitors, a potentiometer, and a button, and this is connected to one of the ADC pins, such that 3 separate circuits can be used individually as controllers.
@@ -12,8 +15,6 @@ A Raspberry Pi Pico listens on [all 3](https://datasheets.raspberrypi.com/pico/P
 The button press alters the voltage range such that the Pico can infer from the ADC reading both the button state and the potentiometer angle simultaneously. The 3 sets of 2 values are sent written by the Pico to the serial port, so any listening device can receive and interpret the buffer.
 
 The web application first detects the presence of attached controllers by listening for a change in the button state. Then, an individual controller (voltage divider circuit) is used to direct a player forward, using the button state, and rotate the player using the potentiometer rotation angle. The player navigates the screen, occupying "capsules" that draw randomised sequences of notes to trigger the sound of a synth or a drum pad.
-
-![Demonstration of paddle-game project](images/demo.gif "Demonstration of paddle-game project")
 
 
 ## Controls
